@@ -25,7 +25,7 @@ The farm runs a control plane API for managing virtual chargers:
 | Variable | Default | Description |
 |---|---|---|
 | `CONTROL_HOST` | `0.0.0.0` | Control API bind address |
-| `CONTROL_PORT` | `8090` | Control API port |
+| `CONTROL_PORT` | `8086` | Control API port |
 
 ## Farm API Reference
 
@@ -99,10 +99,10 @@ The farm uses the same charger profile system as ocpp-core. Built-in profiles:
 
 | Profile ID | Description | Max Power |
 |---|---|---|
-| `generic-ac-22kw` | Generic AC charger | 22 kW |
-| `generic-dc-50kw` | Generic DC fast charger | 50 kW |
-| `generic-dc-120kw` | Generic DC ultra-fast | 120 kW |
-| `maxpower-dc` | DC charger with MAXPOWER quirks | 120 kW |
+| `ENC-DCL120B` | 120kW DC fast charger — production (OCPP 2.0.1) | 120 kW |
+| `ENC-DCL120B-16` | 120kW DC fast charger — lab/legacy (OCPP 1.6j) | 120 kW |
+| `ENC-DCL060B` | 60kW DC fast charger — dual CCS2 (OCPP 1.6j) | 60 kW |
+| `ENC-DCX030A` | 30kW portable DC charger (OCPP 1.6j) | 30 kW |
 
 Set via `POST /chargers` with `"profile": "profile-id"`.
 
@@ -116,7 +116,7 @@ The `MAXPOWER_QUIRKS` preset can be applied to simulate known real-world charger
 
 Apply via scenario or API:
 ```bash
-curl -X POST http://localhost:8090/chargers \
+curl -X POST http://localhost:8086/chargers \
   -d '{"cp_id":"QUIRK-001", "quirks": "maxpower"}'
 ```
 
@@ -128,7 +128,7 @@ Run the farm in Docker:
 docker run -e OCPP_URL=ws://host.docker.internal:9100/ocpp/VIRT-001 \
            -e CP_ID=VIRT-001 \
            -e MAX_KW=120 \
-           -p 8090:8090 \
+           -p 8086:8086 \
            ocpp-charger-farm
 ```
 
@@ -140,7 +140,7 @@ services:
     image: ocpp-charger-farm
     environment:
       OCPP_URL: ws://ocpp-core:9100/ocpp/
-      CONTROL_PORT: 8090
+      CONTROL_PORT: 8086
     ports:
-      - "8090:8090"
+      - "8086:8086"
 ```

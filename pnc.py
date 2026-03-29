@@ -28,7 +28,7 @@ class CertStatus(str, Enum):
 class PnCConfig:
     """Per-charger Plug & Charge configuration."""
     enabled: bool = False
-    emaid_prefix: str = "NL-STM"       # Country-Provider prefix
+    emaid_prefix: str = "XX-CPO"       # Country-Provider prefix
     contract_id_counter: int = 1
     tls_handshake_delay_sec: float = 2.0   # Realistic delay for TLS + ISO 15118 negotiation
     cert_status: CertStatus = CertStatus.VALID
@@ -46,7 +46,7 @@ class PnCConfig:
         }
 
 
-def generate_emaid(prefix: str = "NL-STM", counter: int = 1) -> str:
+def generate_emaid(prefix: str = "XX-CPO", counter: int = 1) -> str:
     """
     Generate a structurally valid eMAID (e-Mobility Account Identifier).
     Format: CC-PPP-IIIIII-C (ISO 15118-2)

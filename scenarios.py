@@ -55,7 +55,7 @@ class ScenarioResult:
             "success": self.success,
             "error": self.error,
             "metrics_snapshot": self.metrics_snapshot,
-            "events": self.events[-100],  # Last 100 events
+            "events": self.events[-100:],  # Last 100 events
         }
 
 

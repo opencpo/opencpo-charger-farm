@@ -204,7 +204,7 @@ class ReportGenerator:
 
         recs_html = ""
         for r in recs:
-            color = {"critical": "#ff4444", "high": "#ff8800", "medium": "#ffcc00", "low": "#84BD00"}.get(r["severity"], "#888")
+            color = {"critical": "#ff4444", "high": "#ff8800", "medium": "#ffcc00", "low": "#22c55e"}.get(r["severity"], "#888")
             recs_html += f'<div class="rec" style="border-left:4px solid {color}"><b>[{r["severity"].upper()}]</b> {r["message"]}</div>'
 
         return f"""<!DOCTYPE html>
@@ -214,9 +214,9 @@ class ReportGenerator:
 <title>Test Report — {report['scenario']}</title>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
-body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0C2340;color:#e0e0e0;padding:24px}}
-.header{{background:linear-gradient(135deg,#0C2340,#1a3a5c);padding:32px;border-radius:12px;margin-bottom:24px;border:1px solid #84BD00}}
-.header h1{{color:#84BD00;font-size:28px;margin-bottom:8px}}
+body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#e0e0e0;padding:24px}}
+.header{{background:linear-gradient(135deg,#1a1a2e,#1a3a5c);padding:32px;border-radius:12px;margin-bottom:24px;border:1px solid #22c55e}}
+.header h1{{color:#22c55e;font-size:28px;margin-bottom:8px}}
 .header .meta{{color:#999;font-size:14px}}
 .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px}}
 .card{{background:#132d4a;border-radius:8px;padding:20px;border:1px solid #1e4060}}
@@ -226,7 +226,7 @@ body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgro
 .stat .label{{color:#999}}
 .stat .value{{color:#fff;font-weight:600}}
 .rec{{background:#132d4a;padding:12px 16px;margin-bottom:8px;border-radius:6px}}
-h2{{color:#84BD00;margin:24px 0 12px;font-size:20px}}
+h2{{color:#22c55e;margin:24px 0 12px;font-size:20px}}
 .footer{{text-align:center;color:#666;padding:24px;font-size:12px}}
 </style>
 </head>
@@ -257,7 +257,7 @@ h2{{color:#84BD00;margin:24px 0 12px;font-size:20px}}
 <div class="card"><h3>Session Integrity</h3>
 <div class="stat"><span class="label">Started</span><span class="value">{integrity['sessions_started']}</span></div>
 <div class="stat"><span class="label">Ended</span><span class="value">{integrity['sessions_ended']}</span></div>
-<div class="stat"><span class="label">Orphaned</span><span class="value" style="color:{'#ff4444' if integrity['orphaned_sessions']>0 else '#84BD00'}">{integrity['orphaned_sessions']}</span></div>
+<div class="stat"><span class="label">Orphaned</span><span class="value" style="color:{'#ff4444' if integrity['orphaned_sessions']>0 else '#22c55e'}">{integrity['orphaned_sessions']}</span></div>
 </div>
 
 <div class="card"><h3>OCPP Compliance</h3>
@@ -266,7 +266,7 @@ h2{{color:#84BD00;margin:24px 0 12px;font-size:20px}}
 </div>
 
 <h2>Recommendations ({len(recs)})</h2>
-{recs_html if recs_html else '<div class="rec" style="border-left:4px solid #84BD00"><b>All clear!</b> No issues found.</div>'}
+{recs_html if recs_html else '<div class="rec" style="border-left:4px solid #22c55e"><b>All clear!</b> No issues found.</div>'}
 
 <div class="footer">OCPP Virtual Charger Farm — Stress Test Report</div>
 </body>

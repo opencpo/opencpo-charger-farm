@@ -118,7 +118,7 @@ PROFILES: dict[str, ChargerProfile] = {
         num_connectors=2,
         connector_types=(ConnectorType.CCS2, ConnectorType.CCS2),
         ocpp_version=OcppVersion.V16,
-        description="60kW DC fast charger — Lichtwerk units (OCPP 1.6j)",
+        description="60kW DC fast charger — dual CCS2 (OCPP 1.6j)",
     ),
     "ENC-DCX030A": ChargerProfile(
         name="ENC-DCX030A",

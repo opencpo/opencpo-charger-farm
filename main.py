@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-Virtual Charger Farm Manager — FastAPI + Jinja2 web UI.
-Entry point. Run with: uvicorn main:app --host 127.0.0.1 --port 8087
+Virtual Charger Farm — Web UI (optional, development only).
+NOT the primary entry point. The production entry point is control.py (port 8086).
+
+Run web UI with: uvicorn main:app --host 127.0.0.1 --port 8087
+Run production with: uvicorn control:app --host 0.0.0.0 --port 8086
 """
 
 import asyncio
