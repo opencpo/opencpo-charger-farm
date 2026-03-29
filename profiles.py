@@ -22,7 +22,7 @@ class ConnectorType(str, Enum):
 @dataclass
 class QuirkConfig:
     """MAXPOWER firmware quirks — toggleable per charger instance.
-    Learned from real Maxpower CCS2+CCS2 at Lichtwerk (March 28, 2026)."""
+    Learned from real Maxpower CCS2+CCS2 deployment (March 2026)."""
     websocket_ping_interval_zero: bool = True       # WS ping=0, server must ping us
     reject_connection_timeout_change: bool = True    # Reject ChangeConfiguration for ConnectionTimeOut
     stop_transaction_on_reconnect: bool = True       # Send StopTransaction reason=Other on WS reconnect
