@@ -1,0 +1,35 @@
+services:
+  control:
+    build: .
+    ports:
+      - "8086:8086"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "8086"
+      OCPP16_URL: "${OCPP16_URL:-ws://host.docker.internal:9100/ocpp}"
+      OCPP201_URL: "${OCPP201_URL:-ws://host.docker.internal:9201/ocpp}"
+      CPO_API_URL: "${CPO_API_URL:-}"
+      REDIS_HOST: "${REDIS_HOST:-}"
+    restart: unless-stopped
+    volumes:
+      - reports:/app/reports
+      - settings:/app
+
+  # ─── Optional: Tailscale sidecar for secure tunnel ───────
+  # tailscale:
+  #   image: tailscale/tailscale:latest
+  #   hostname: charger-farm
+  #   environment:
+  #     TS_AUTHKEY: "${TS_AUTHKEY}"
+  #     TS_STATE_DIR: /var/lib/tailscale
+  #   volumes:
+  #     - tailscale-state:/var/lib/tailscale
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - SYS_MODULE
+  #   restart: unless-stopped
+
+volumes:
+  reports:
+  settings:
+  # tailscale-state:

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ {% block title %}Charger Farm{% endblock %} — STM</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/farm.css">
+  <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/farm.js" defer></script>
+</head>
+<body>
+<nav style="display:flex;align-items:center;gap:4px;padding:6px 16px;background:#0a1628;border-bottom:1px solid #1e3a5f;font-size:12px;position:sticky;top:0;z-index:9999;overflow-x:auto;white-space:nowrap;">
+  <span style="color:#00B0E4;font-weight:700;font-size:13px;margin-right:12px;">⚡ STM</span>
+  <a href="https://admin.stm.internal" target="_blank" style="color:#94a3b8;text-decoration:none;padding:4px 10px;border-radius:6px;">🔧 Admin</a>
+  <a href="https://ems.stm.internal" target="_blank" style="color:#94a3b8;text-decoration:none;padding:4px 10px;border-radius:6px;">🔋 Energie</a>
+  <a href="https://quotes.stm.internal" target="_blank" style="color:#94a3b8;text-decoration:none;padding:4px 10px;border-radius:6px;">📝 Offertes</a>
+  <a href="https://wiki.stm.internal" target="_blank" style="color:#94a3b8;text-decoration:none;padding:4px 10px;border-radius:6px;">📖 Wiki</a>
+  <a href="https://news.stm.internal" target="_blank" style="color:#94a3b8;text-decoration:none;padding:4px 10px;border-radius:6px;">📰 Nieuws</a>
+  <a href="https://ops.stm.internal" target="_blank" style="color:#94a3b8;text-decoration:none;padding:4px 10px;border-radius:6px;">🖥️ Ops</a>
+  <a href="https://farm.stm.internal" target="_blank" style="color:#00B0E4;text-decoration:none;padding:4px 10px;border-radius:6px;background:#00B0E422;">🔌 Charger Farm</a>
+  <a href="https://terminal.stm.internal" target="_blank" style="color:#94a3b8;text-decoration:none;padding:4px 10px;border-radius:6px;">💻 Terminal</a>
+</nav>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

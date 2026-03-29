@@ -1,0 +1,37 @@
+<section class="card" id="panel-metrics">
+  <div class="card-header">
+    <span class="card-title">📊 Live Metrics</span>
+    <span class="badge-refresh">↻ 2s</span>
+  </div>
+  <div class="metrics-grid" id="metrics-grid">
+    <div class="metric-tile">
+      <div class="metric-label">Connected</div>
+      <div class="metric-value" id="m-connected">0</div>
+      <canvas class="sparkline" id="spark-connected" width="80" height="24"></canvas>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-label">Charging</div>
+      <div class="metric-value" id="m-charging">0</div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-label">Msg/sec</div>
+      <div class="metric-value" id="m-mps">0</div>
+      <canvas class="sparkline" id="spark-mps" width="80" height="24"></canvas>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-label">Errors</div>
+      <div class="metric-value text-error" id="m-errors">0</div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-label">Avg Latency</div>
+      <div class="metric-value" id="m-latency">0<small>ms</small></div>
+    </div>
+    <div class="metric-tile">
+      <div class="metric-label">Sessions Started</div>
+      <div class="metric-value" id="m-sessions">0</div>
+    </div>
+  </div>
+  <div class="metric-error-line" id="m-last-error" style="display:none">
+    <span class="text-error">Last error:</span> <span id="m-last-error-text"></span>
+  </div>
+</section>

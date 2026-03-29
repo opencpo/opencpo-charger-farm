@@ -1,0 +1,126 @@
+<section class="card" id="panel-conditions">
+  <div class="card-header">
+    <span class="card-title">⚙️ Conditions</span>
+    <button class="btn btn-sm btn-secondary" onclick="applyConditions()">Apply</button>
+  </div>
+
+  <!-- Network -->
+  <div class="section-label">Network</div>
+  <div class="form-row">
+    <label>Latency <span class="val" id="latency-val">{{ conditions.latency_ms }}</span>ms</label>
+    <input type="range" min="0" max="2000" value="{{ conditions.latency_ms }}" id="latency-slider"
+           oninput="document.getElementById('latency-val').textContent=this.value">
+  </div>
+  <div class="form-row">
+    <label>Packet Loss <span class="val" id="loss-val">{{ conditions.packet_loss_pct }}</span>%</label>
+    <input type="range" min="0" max="50" value="{{ conditions.packet_loss_pct }}" id="loss-slider"
+           oninput="document.getElementById('loss-val').textContent=this.value">
+  </div>
+  <div class="form-row">
+    <label>Disconnect Interval <span class="val" id="disc-val">{{ conditions.disconnect_interval_s }}</span>s
+      <small class="muted">(0=never)</small></label>
+    <input type="range" min="0" max="300" value="{{ conditions.disconnect_interval_s }}" id="disc-slider"
+           oninput="document.getElementById('disc-val').textContent=this.value">
+  </div>
+  <div class="form-row">
+    <button class="btn btn-warning btn-sm" onclick="reconnectStorm()">⚡ Reconnect Storm</button>
+  </div>
+
+  <!-- Faults -->
+  <div class="section-label">Faults</div>
+  <div class="form-row">
+    <label>Fault Types</label>
+    <div class="multi-select" id="fault-types">
+      {% set fault_list = ['ConnectorLockFailure','GroundFailure','OverCurrentFailure','PowerMeterFailure','HighTemperature'] %}
+      {% for f in fault_list %}
+      <label class="chip">
+        <input type="checkbox" value="{{ f }}"
+               {% if f in conditions.fault_types %}checked{% endif %}> {{ f }}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="form-row">
+    <label>Fault Probability <span class="val" id="fprob-val">{{ conditions.fault_probability }}</span>%</label>
+    <input type="range" min="0" max="100" value="{{ conditions.fault_probability }}" id="fprob-slider"
+           oninput="document.getElementById('fprob-val').textContent=this.value">
+  </div>
+  <div class="form-row">
+    <label>Target Chargers</label>
+    <select id="fault-target" class="select-input" onchange="toggleFaultIds(this.value)">
+      <option value="all" {% if conditions.fault_target == 'all' %}selected{% endif %}>All</option>
+      <option value="random" {% if conditions.fault_target == 'random' %}selected{% endif %}>Random N</option>
+      <option value="specific" {% if conditions.fault_target == 'specific' %}selected{% endif %}>Specific IDs</option>
+    </select>
+    <input type="text" id="fault-target-ids" class="text-input"
+           value="{{ conditions.fault_target_ids }}" placeholder="FARM-...-0001, ..."
+           style="{% if conditions.fault_target != 'specific' %}display:none{% endif %}; margin-top:4px">
+  </div>
+
+  <!-- Sessions -->
+  <div class="section-label">Sessions</div>
+  <div class="form-row">
+    <label>Auto-Start Sessions</label>
+    <label class="switch">
+      <input type="checkbox" id="auto-sessions" {% if conditions.auto_sessions %}checked{% endif %}>
+      <span class="switch-slider"></span>
+    </label>
+  </div>
+  <div class="form-row">
+    <label>SoC Range <span class="val" id="soc-min-val">{{ conditions.soc_min }}</span>–<span class="val" id="soc-max-val">{{ conditions.soc_max }}</span>%</label>
+    <div class="dual-range">
+      <input type="range" min="10" max="100" value="{{ conditions.soc_min }}" id="soc-min-slider"
+             oninput="document.getElementById('soc-min-val').textContent=this.value">
+      <input type="range" min="10" max="100" value="{{ conditions.soc_max }}" id="soc-max-slider"
+             oninput="document.getElementById('soc-max-val').textContent=this.value">
+    </div>
+  </div>
+  <div class="form-row">
+    <label>Session Duration <span class="val" id="dur-val">{{ conditions.session_duration_min }}</span> min</label>
+    <input type="range" min="5" max="120" value="{{ conditions.session_duration_min }}" id="dur-slider"
+           oninput="document.getElementById('dur-val').textContent=this.value">
+  </div>
+  <div class="form-row">
+    <label>Concurrent Sessions <span class="val" id="conc-val">{{ conditions.concurrent_sessions }}</span>/charger</label>
+    <input type="range" min="1" max="4" value="{{ conditions.concurrent_sessions }}" id="conc-slider"
+           oninput="document.getElementById('conc-val').textContent=this.value">
+  </div>
+
+  <!-- Smart Charging -->
+  <div class="section-label">Smart Charging</div>
+  <div class="form-row">
+    <label>Accept Profiles</label>
+    <label class="switch">
+      <input type="checkbox" id="accept-sc" {% if conditions.accept_smart_charging %}checked{% endif %}>
+      <span class="switch-slider"></span>
+    </label>
+  </div>
+  <div class="form-row">
+    <label>Response Delay <span class="val" id="sc-delay-val">{{ conditions.smart_charging_delay_s }}</span>s</label>
+    <input type="range" min="0" max="10" value="{{ conditions.smart_charging_delay_s }}" id="sc-delay-slider"
+           oninput="document.getElementById('sc-delay-val').textContent=this.value">
+  </div>
+  <div class="form-row">
+    <label>Override Limit <span class="val" id="sc-override-val">{{ conditions.smart_charging_override_pct }}</span>%</label>
+    <input type="range" min="0" max="100" value="{{ conditions.smart_charging_override_pct }}" id="sc-override-slider"
+           oninput="document.getElementById('sc-override-val').textContent=this.value">
+  </div>
+
+  <!-- Plug & Charge -->
+  <div class="section-label">Plug & Charge</div>
+  <div class="form-row">
+    <label>Enable P&C</label>
+    <label class="switch">
+      <input type="checkbox" id="pnc-enabled" {% if conditions.pnc_enabled %}checked{% endif %}>
+      <span class="switch-slider"></span>
+    </label>
+  </div>
+  <div class="form-row">
+    <label>Certificate Validity</label>
+    <select id="pnc-cert" class="select-input">
+      {% for v in ['valid','expired','revoked','wrong CA'] %}
+      <option value="{{ v }}" {% if conditions.pnc_cert_validity == v %}selected{% endif %}>{{ v }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</section>

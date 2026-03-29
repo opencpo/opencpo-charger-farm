@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Virtual Charger Farm</title>
+<style>
+/* ─── Reset & Base ──────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#0C2340;--navy-light:#132d4a;--navy-lighter:#1e4060;--navy-border:#2a5278;
+  --green:#84BD00;--blue:#00B0E4;--red:#ff4444;--orange:#ff8800;--yellow:#ffcc00;
+  --purple:#b066ff;--gray:#666;--gray-light:#999;--white:#e8e8e8;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --radius:8px;--radius-sm:6px;--transition:0.2s ease;
+}
+html,body{height:100%;font-family:var(--font);background:var(--navy);color:var(--white);font-size:14px;overflow:hidden}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--navy)}
+::-webkit-scrollbar-thumb{background:var(--navy-lighter);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--navy-border)}
+button{font-family:var(--font);cursor:pointer;border:none;outline:none;transition:all var(--transition)}
+input,select,textarea{font-family:var(--font);background:var(--navy);color:var(--white);border:1px solid var(--navy-border);border-radius:var(--radius-sm);padding:8px 12px;outline:none;transition:border var(--transition)}
+input:focus,select:focus{border-color:var(--blue)}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2384BD00' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+
+/* ─── Layout ────────────────────────────────────────────────── */
+#app{display:flex;flex-direction:column;height:100vh}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:52px;background:linear-gradient(135deg,var(--navy),var(--navy-light));border-bottom:1px solid var(--navy-lighter);flex-shrink:0}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-left h1{font-size:18px;color:var(--white);font-weight:600;letter-spacing:-0.3px}
+.topbar-left .logo{color:var(--green);font-size:20px;display:flex;align-items:center}
+.topbar-right{display:flex;align-items:center;gap:16px}
+.conn-dot{width:10px;height:10px;border-radius:50%;display:inline-block;transition:background var(--transition)}
+.conn-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+.conn-dot.err{background:var(--red);box-shadow:0 0 6px var(--red)}
+.icon-btn{background:transparent;color:var(--gray-light);padding:6px;border-radius:var(--radius-sm);display:flex;align-items:center}
+.icon-btn:hover{color:var(--white);background:var(--navy-lighter)}
+.icon-btn svg{width:20px;height:20px}
+
+/* ─── Overview Bar ──────────────────────────────────────────── */
+#overview{display:flex;gap:12px;padding:12px 20px;border-bottom:1px solid var(--navy-lighter);flex-shrink:0;overflow-x:auto}
+.ov-card{background:var(--navy-light);border-radius:var(--radius);padding:12px 18px;min-width:120px;border-top:3px solid var(--navy-border);transition:border-color var(--transition)}
+.ov-card .num{font-size:26px;font-weight:700;line-height:1.1}
+.ov-card .lbl{font-size:11px;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
+
+/* ─── Tabs ──────────────────────────────────────────────────── */
+#tabs{display:flex;gap:0;border-bottom:1px solid var(--navy-lighter);padding:0 20px;flex-shrink:0}
+.tab{padding:10px 18px;color:var(--gray-light);cursor:pointer;border-bottom:2px solid transparent;transition:all var(--transition);font-size:13px;font-weight:500;user-select:none}
+.tab:hover{color:var(--white)}
+.tab.active{color:var(--green);border-bottom-color:var(--green)}
+
+/* ─── Main Content ──────────────────────────────────────────── */
+#content{flex:1;overflow-y:auto;padding:16px 20px}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ─── Buttons ───────────────────────────────────────────────── */
+.btn{padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.btn-green{background:var(--green);color:var(--navy)}
+.btn-green:hover{background:#96d400;transform:translateY(-1px)}
+.btn-blue{background:var(--blue);color:var(--navy)}
+.btn-blue:hover{background:#22c8f8;transform:translateY(-1px)}
+.btn-red{background:var(--red);color:#fff}
+.btn-red:hover{background:#ff6666;transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--white);border:1px solid var(--navy-border)}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none!important}
+
+/* ─── Quick Actions ─────────────────────────────────────────── */
+.quick-actions{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+
+/* ─── Charger Grid ──────────────────────────────────────────── */
+.charger-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.charger-card{background:var(--navy-light);border:1px solid var(--navy-lighter);border-radius:var(--radius);padding:14px;cursor:pointer;transition:all var(--transition)}
+.charger-card:hover{border-color:var(--navy-border);transform:translateY(-1px)}
+.charger-card.selected{border-color:var(--blue)}
+.cc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.cc-id{font-weight:600;font-size:14px}
+.cc-badges{display:flex;gap:4px}
+.badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;letter-spacing:0.3px}
+.badge-16{background:rgba(0,176,228,0.2);color:var(--blue)}
+.badge-201{background:rgba(132,189,0,0.2);color:var(--green)}
+.badge-profile{background:rgba(255,255,255,0.08);color:var(--gray-light);font-size:9px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex-shrink:0}
+.status-dot.available{background:var(--green)}
+.status-dot.charging{background:var(--blue)}
+.status-dot.discharging{background:var(--purple)}
+.status-dot.error,.status-dot.faulted{background:var(--red)}
+.status-dot.offline,.status-dot.unavailable{background:var(--gray)}
+.cc-status{display:flex;align-items:center;font-size:12px;color:var(--gray-light);margin-bottom:8px}
+.power-bar-wrap{background:var(--navy);border-radius:3px;height:6px;overflow:hidden;margin-bottom:4px}
+.power-bar{height:100%;border-radius:3px;transition:width 0.5s ease;background:linear-gradient(90deg,var(--blue),var(--green))}
+.power-bar.v2g{background:linear-gradient(90deg,var(--purple),var(--blue))}
+.cc-stats{display:flex;justify-content:space-between;font-size:11px;color:var(--gray-light)}
+
+/* ─── Charger Detail ────────────────────────────────────────── */
+.charger-detail{background:var(--navy-light);border:1px solid var(--navy-lighter);border-radius:var(--radius);padding:16px;margin-top:12px;display:none}
+.charger-detail.open{display:block}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.detail-grid{grid-template-columns:1fr}}
+.detail-section{background:var(--navy);border-radius:var(--radius-sm);padding:12px}
+.detail-section h4{color:var(--blue);font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px}
+.detail-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.slider-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.slider-row label{font-size:12px;color:var(--gray-light);min-width:80px}
+.slider-row input[type=range]{flex:1;accent-color:var(--green);height:4px}
+.slider-row .val{font-size:12px;min-width:50px;text-align:right;color:var(--white)}
+.msg-log{max-height:200px;overflow-y:auto;font-family:'SF Mono',Consolas,monospace;font-size:11px;line-height:1.6}
+.msg-log div{padding:2px 0;border-bottom:1px solid var(--navy-lighter)}
+.msg-log .ts{color:var(--gray)}
+.msg-log .src{color:var(--blue)}
+.msg-log .err{color:var(--red)}
+
+/* ─── Scenarios ─────────────────────────────────────────────── */
+.scenario-list{display:flex;flex-direction:column;gap:10px}
+.scenario-card{background:var(--navy-light);border:1px solid var(--navy-lighter);border-radius:var(--radius);padding:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.scenario-info{flex:1;min-width:200px}
+.scenario-info h3{font-size:15px;color:var(--white);margin-bottom:4px}
+.scenario-info p{font-size:12px;color:var(--gray-light)}
+.scenario-controls{display:flex;align-items:center;gap:8px}
+.scenario-active{background:var(--navy-light);border:2px solid var(--green);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.scenario-active h3{color:var(--green);margin-bottom:8px}
+.progress-bar-wrap{background:var(--navy);border-radius:3px;height:8px;overflow:hidden}
+.progress-bar{height:100%;background:var(--green);border-radius:3px;transition:width 0.5s ease}
+
+/* ─── Network ───────────────────────────────────────────────── */
+.net-presets{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.net-preset{background:var(--navy-light);border:1px solid var(--navy-lighter);border-radius:var(--radius-sm);padding:10px 16px;cursor:pointer;transition:all var(--transition);text-align:center}
+.net-preset:hover{border-color:var(--blue);transform:translateY(-1px)}
+.net-preset.active{border-color:var(--green);background:rgba(132,189,0,0.1)}
+.net-preset h4{font-size:13px;color:var(--white);margin-bottom:2px}
+.net-preset p{font-size:11px;color:var(--gray-light)}
+
+/* ─── Environment ───────────────────────────────────────────── */
+.env-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.env-card{background:var(--navy-light);border:1px solid var(--navy-lighter);border-radius:var(--radius);padding:16px}
+.env-card h3{color:var(--blue);font-size:14px;margin-bottom:12px}
+.env-presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.env-preset{padding:5px 12px;border-radius:12px;font-size:11px;cursor:pointer;background:var(--navy);border:1px solid var(--navy-border);color:var(--gray-light);transition:all var(--transition)}
+.env-preset:hover{border-color:var(--blue);color:var(--white)}
+.env-preset.active{border-color:var(--green);color:var(--green);background:rgba(132,189,0,0.1)}
+
+/* ─── Metrics ───────────────────────────────────────────────── */
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.metrics-grid{grid-template-columns:1fr}}
+.chart-box{background:var(--navy-light);border:1px solid var(--navy-lighter);border-radius:var(--radius);padding:16px}
+.chart-box h3{color:var(--blue);font-size:13px;margin-bottom:10px}
+canvas{width:100%;height:200px;display:block}
+
+/* ─── Reports ───────────────────────────────────────────────── */
+.report-list{display:flex;flex-direction:column;gap:8px}
+.report-row{background:var(--navy-light);border:1px solid var(--navy-lighter);border-radius:var(--radius);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all var(--transition)}
+.report-row:hover{border-color:var(--blue)}
+.report-meta{display:flex;gap:16px;font-size:12px;color:var(--gray-light)}
+.report-actions{display:flex;gap:6px}
+.report-viewer{background:var(--navy-light);border:1px solid var(--navy-lighter);border-radius:var(--radius);padding:16px;margin-top:12px}
+.report-viewer iframe{width:100%;height:500px;border:none;border-radius:var(--radius-sm);background:#fff}
+
+/* ─── Log Panel ─────────────────────────────────────────────── */
+#log-panel{border-top:1px solid var(--navy-lighter);flex-shrink:0;transition:height var(--transition);overflow:hidden}
+#log-panel.collapsed{height:36px}
+#log-panel.expanded{height:240px}
+.log-header{display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:var(--navy-light);cursor:pointer;user-select:none;height:36px}
+.log-header h3{font-size:12px;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.5px}
+.log-header-right{display:flex;align-items:center;gap:10px}
+.log-filters{display:flex;gap:4px}
+.log-filter{padding:2px 8px;border-radius:10px;font-size:10px;cursor:pointer;color:var(--gray-light);transition:all var(--transition)}
+.log-filter:hover{color:var(--white)}
+.log-filter.active{background:rgba(132,189,0,0.2);color:var(--green)}
+.log-search{background:var(--navy);border:1px solid var(--navy-lighter);border-radius:10px;padding:3px 10px;font-size:11px;color:var(--white);width:140px}
+#log-content{height:calc(100% - 36px);overflow-y:auto;padding:4px 20px;font-family:'SF Mono',Consolas,monospace;font-size:11px;line-height:1.8}
+#log-content .log-entry{border-bottom:1px solid rgba(30,64,96,0.3)}
+.log-entry .ts{color:var(--gray)}
+.log-entry .src{color:var(--blue);font-weight:500}
+.log-entry .lvl-error{color:var(--red)}
+.log-entry .lvl-info{color:var(--green)}
+.log-entry .lvl-warn{color:var(--orange)}
+
+/* ─── Modal ─────────────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--navy-light);border:1px solid var(--navy-lighter);border-radius:12px;width:90%;max-width:540px;max-height:85vh;overflow-y:auto;padding:24px}
+.modal h2{color:var(--green);font-size:18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.modal h2 .close-btn{color:var(--gray-light);cursor:pointer;background:none;border:none;font-size:20px;padding:0 4px}
+.modal h2 .close-btn:hover{color:var(--white)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;color:var(--gray-light);margin-bottom:4px}
+.form-group input,.form-group select{width:100%}
+.form-row{display:flex;gap:12px}
+.form-row .form-group{flex:1}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid var(--navy-lighter)}
+
+/* ─── Toast ─────────────────────────────────────────────────── */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:2000;display:flex;flex-direction:column-reverse;gap:8px}
+.toast{background:var(--navy-light);border:1px solid var(--navy-lighter);border-radius:var(--radius);padding:10px 16px;font-size:12px;box-shadow:0 4px 20px rgba(0,0,0,0.4);animation:slideIn 0.3s ease;max-width:360px;display:flex;align-items:center;gap:8px}
+.toast.success{border-left:3px solid var(--green)}
+.toast.error{border-left:3px solid var(--red)}
+.toast.info{border-left:3px solid var(--blue)}
+@keyframes slideIn{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0;transform:translateX(40px)}}
+
+/* ─── Utilities ─────────────────────────────────────────────── */
+.empty-state{text-align:center;padding:60px 20px;color:var(--gray)}
+.empty-state svg{width:48px;height:48px;color:var(--navy-lighter);margin-bottom:12px}
+.empty-state p{font-size:14px}
+.mt-12{margin-top:12px}
+.mb-12{margin-bottom:12px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Top Bar -->
+<div id="topbar">
+  <div class="topbar-left">
+    <div class="logo"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+    <h1>Virtual Charger Farm</h1>
+  </div>
+  <div class="topbar-right">
+    <span style="font-size:12px;color:var(--gray-light)"><span class="conn-dot err" id="conn-dot"></span> <span id="conn-label">Connecting...</span></span>
+    <button class="icon-btn" onclick="openModal('settings')" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  </div>
+</div>
+
+<!-- Overview Bar -->
+<div id="overview">
+  <div class="ov-card" style="border-top-color:var(--white)"><div class="num" id="ov-total">0</div><div class="lbl">Total</div></div>
+  <div class="ov-card" style="border-top-color:var(--green)"><div class="num" id="ov-connected">0</div><div class="lbl">Connected</div></div>
+  <div class="ov-card" style="border-top-color:var(--blue)"><div class="num" id="ov-charging">0</div><div class="lbl">Charging</div></div>
+  <div class="ov-card" style="border-top-color:var(--purple)"><div class="num" id="ov-v2g">0</div><div class="lbl">V2G</div></div>
+  <div class="ov-card" style="border-top-color:var(--red)"><div class="num" id="ov-errors">0</div><div class="lbl">Errors</div></div>
+  <div class="ov-card" style="border-top-color:var(--blue)"><div class="num" id="ov-msgrate">0</div><div class="lbl">msg/sec</div></div>
+  <div class="ov-card" style="border-top-color:var(--orange)"><div class="num" id="ov-latency">0</div><div class="lbl">avg ms</div></div>
+</div>
+
+<!-- Tabs -->
+<div id="tabs">
+  <div class="tab active" data-tab="farm">Farm</div>
+  <div class="tab" data-tab="scenarios">Scenarios</div>
+  <div class="tab" data-tab="network">Network</div>
+  <div class="tab" data-tab="environment">Environment</div>
+  <div class="tab" data-tab="metrics">Metrics</div>
+  <div class="tab" data-tab="reports">Reports</div>
+</div>
+
+<!-- Main Content -->
+<div id="content">
+
+  <!-- Farm Tab -->
+  <div class="tab-panel active" id="panel-farm">
+    <div class="quick-actions">
+      <button class="btn btn-green" onclick="openModal('addCharger')"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg> Add Charger</button>
+      <button class="btn btn-blue" onclick="openModal('addFleet')"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg> Add Fleet</button>
+      <button class="btn btn-red" onclick="stopAll()"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="10" height="10" rx="1"/></svg> Stop All</button>
+    </div>
+    <div class="charger-grid" id="charger-grid"></div>
+    <div class="charger-detail" id="charger-detail"></div>
+    <div class="empty-state" id="farm-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <p>No chargers running. Add one to get started.</p>
+    </div>
+  </div>
+
+  <!-- Scenarios Tab -->
+  <div class="tab-panel" id="panel-scenarios">
+    <div class="scenario-active" id="active-scenario" style="display:none">
+      <h3 id="active-scenario-name">No active scenario</h3>
+      <p id="active-scenario-info" style="font-size:12px;color:var(--gray-light);margin-bottom:8px"></p>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="scenario-progress" style="width:0%"></div></div>
+      <button class="btn btn-red btn-sm mt-12" onclick="stopScenario()">Stop Scenario</button>
+    </div>
+    <div class="scenario-list" id="scenario-list"></div>
+  </div>
+
+  <!-- Network Tab -->
+  <div class="tab-panel" id="panel-network">
+    <h3 style="color:var(--white);margin-bottom:12px">Network Presets</h3>
+    <div class="net-presets" id="net-presets">
+      <div class="net-preset active" onclick="applyNetPreset('clean')"><h4>Clean</h4><p>0ms / 0% loss</p></div>
+      <div class="net-preset" onclick="applyNetPreset('starlink')"><h4>Starlink</h4><p>50ms / 2% loss</p></div>
+      <div class="net-preset" onclick="applyNetPreset('4g')"><h4>Flaky 4G</h4><p>200ms / 10% loss</p></div>
+      <div class="net-preset" onclick="applyNetPreset('hell')"><h4>Network Hell</h4><p>2000ms / 40% loss</p></div>
+    </div>
+    <div class="env-card mt-12">
+      <h3>Chaos Intensity</h3>
+      <div class="slider-row">
+        <label>Level</label>
+        <input type="range" min="0" max="3" step="1" value="0" id="chaos-slider" oninput="debounce(updateChaos,300)()">
+        <span class="val" id="chaos-label">Calm</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Environment Tab -->
+  <div class="tab-panel" id="panel-environment">
+    <div class="env-grid">
+      <div class="env-card">
+        <h3>Temperature</h3>
+        <div class="slider-row">
+          <label>Ambient</label>
+          <input type="range" min="-10" max="45" step="1" value="20" id="temp-slider" oninput="debounce(updateEnv,300)()">
+          <span class="val" id="temp-label">20 C</span>
+        </div>
+        <div class="env-presets">
+          <button class="env-preset" onclick="setTemp(-10)">Snow</button>
+          <button class="env-preset" onclick="setTemp(5)">Cold</button>
+          <button class="env-preset active" onclick="setTemp(20)">Sunny</button>
+          <button class="env-preset" onclick="setTemp(30)">Hot</button>
+          <button class="env-preset" onclick="setTemp(42)">Heatwave</button>
+        </div>
+      </div>
+      <div class="env-card">
+        <h3>Grid Condition</h3>
+        <div class="slider-row">
+          <label>Voltage</label>
+          <input type="range" min="0" max="120" step="1" value="100" id="grid-slider" oninput="debounce(updateEnv,300)()">
+          <span class="val" id="grid-label">100%</span>
+        </div>
+        <div class="env-presets">
+          <button class="env-preset active" onclick="setGrid(100)">Normal</button>
+          <button class="env-preset" onclick="setGrid(70)">Brownout</button>
+          <button class="env-preset" onclick="setGrid(115)">Spike</button>
+          <button class="env-preset" onclick="setGrid(0)">Outage</button>
+        </div>
+      </div>
+      <div class="env-card">
+        <h3>Vehicle Behavior</h3>
+        <div class="env-presets">
+          <button class="env-preset active" onclick="toast('Vehicle behavior set to Normal','info')">Normal</button>
+          <button class="env-preset" onclick="toast('BMS Cutoff simulation active','info')">BMS Cutoff</button>
+          <button class="env-preset" onclick="toast('Cable Pull simulation active','info')">Cable Pull</button>
+          <button class="env-preset" onclick="toast('Slow Accept simulation active','info')">Slow Accept</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics Tab -->
+  <div class="tab-panel" id="panel-metrics">
+    <div class="metrics-grid">
+      <div class="chart-box"><h3>Messages / sec</h3><canvas id="chart-msgs"></canvas></div>
+      <div class="chart-box"><h3>Latency (ms)</h3><canvas id="chart-latency"></canvas></div>
+      <div class="chart-box"><h3>Connections</h3><canvas id="chart-connections"></canvas></div>
+      <div class="chart-box"><h3>Errors</h3><canvas id="chart-errors"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Reports Tab -->
+  <div class="tab-panel" id="panel-reports">
+    <div class="report-list" id="report-list"></div>
+    <div class="report-viewer" id="report-viewer" style="display:none"></div>
+    <div class="empty-state" id="reports-empty">
+      <p>No reports generated yet. Run a scenario to create one.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Log Panel -->
+<div id="log-panel" class="expanded">
+  <div class="log-header" onclick="toggleLog()">
+    <h3>Event Log <span id="log-count" style="color:var(--green)">(0)</span></h3>
+    <div class="log-header-right">
+      <div class="log-filters">
+        <span class="log-filter active" data-filter="all" onclick="setLogFilter('all',this)">All</span>
+        <span class="log-filter" data-filter="connect" onclick="setLogFilter('connect',this)">Connect</span>
+        <span class="log-filter" data-filter="error" onclick="setLogFilter('error',this)">Errors</span>
+        <span class="log-filter" data-filter="scenario" onclick="setLogFilter('scenario',this)">Scenarios</span>
+        <span class="log-filter" data-filter="ocpp" onclick="setLogFilter('ocpp',this)">OCPP</span>
+      </div>
+      <input type="text" class="log-search" placeholder="Search..." id="log-search" oninput="renderLog()">
+      <button class="btn btn-sm btn-outline" onclick="clearLog()">Clear</button>
+      <label style="font-size:10px;color:var(--gray-light);cursor:pointer"><input type="checkbox" id="log-autoscroll" checked style="margin-right:4px">Auto</label>
+    </div>
+  </div>
+  <div id="log-content"></div>
+</div>
+
+<!-- Toasts -->
+<div id="toasts"></div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal">
+    <h2>Settings <button class="close-btn" onclick="closeModal('settings')"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button></h2>
+    <div class="form-group"><label>OCPP 1.6j Server URL</label><input id="s-ocpp16" placeholder="ws://localhost:9100/ocpp"></div>
+    <div class="form-group"><label>OCPP 2.0.1 Server URL</label><input id="s-ocpp201" placeholder="ws://localhost:9201/ocpp"></div>
+    <div class="form-group"><label>CPO API URL</label><input id="s-cpo" placeholder="http://localhost:8080"></div>
+    <div class="form-group"><label>Redis Host</label><input id="s-redis" placeholder="localhost"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Default Profile</label>
+        <select id="s-profile"><option>ENC-DCL120B-16</option><option>ENC-DCL120B</option><option>ENC-DCL060B</option><option>ENC-DCX030A</option></select>
+      </div>
+      <div class="form-group"><label>Connection Mode</label>
+        <select id="s-connmode"><option value="direct">Direct</option><option value="tailscale">Tailscale</option><option value="tailscale_tls">Tailscale+TLS</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>Tailscale Auth Key</label><input id="s-tskey" type="password" placeholder="tskey-..."></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="exportSettings()">Export JSON</button>
+      <button class="btn btn-outline" onclick="importSettings()">Import JSON</button>
+      <button class="btn btn-outline" onclick="resetSettings()">Reset</button>
+      <button class="btn btn-green" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Charger Modal -->
+<div class="modal-overlay" id="modal-addCharger">
+  <div class="modal">
+    <h2>Add Charger <button class="close-btn" onclick="closeModal('addCharger')"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button></h2>
+    <div class="form-row">
+      <div class="form-group"><label>Profile</label>
+        <select id="ac-profile" onchange="acProfileChange()">
+          <option value="ENC-DCL120B-16">ENC-DCL120B-16 (120kW, 1.6j)</option>
+          <option value="ENC-DCL120B">ENC-DCL120B (120kW, 2.0.1)</option>
+          <option value="ENC-DCL060B">ENC-DCL060B (60kW, 1.6j)</option>
+          <option value="ENC-DCX030A">ENC-DCX030A (30kW, 1.6j)</option>
+        </select>
+      </div>
+      <div class="form-group"><label>OCPP Version</label>
+        <select id="ac-version"><option value="">Auto (from profile)</option><option value="1.6">1.6j</option><option value="2.0.1">2.0.1</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Charge Point ID</label><input id="ac-cpid" placeholder="Auto-generate"></div>
+      <div class="form-group"><label>Site Name</label><input id="ac-site" value="default"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label style="cursor:pointer"><input type="checkbox" id="ac-quirks" checked style="margin-right:6px">MAXPOWER Quirks</label></div>
+      <div class="form-group"><label style="cursor:pointer"><input type="checkbox" id="ac-v2g" style="margin-right:6px">V2G Capable</label></div>
+      <div class="form-group"><label style="cursor:pointer"><input type="checkbox" id="ac-pnc" style="margin-right:6px">Plug & Charge</label></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-green" onclick="spawnCharger()">Start Charger</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Fleet Modal -->
+<div class="modal-overlay" id="modal-addFleet">
+  <div class="modal">
+    <h2>Add Fleet <button class="close-btn" onclick="closeModal('addFleet')"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg></button></h2>
+    <div class="form-row">
+      <div class="form-group"><label>Profile</label>
+        <select id="af-profile">
+          <option value="ENC-DCL120B-16">ENC-DCL120B-16 (120kW, 1.6j)</option>
+          <option value="ENC-DCL120B">ENC-DCL120B (120kW, 2.0.1)</option>
+          <option value="ENC-DCL060B">ENC-DCL060B (60kW, 1.6j)</option>
+          <option value="ENC-DCX030A">ENC-DCX030A (30kW, 1.6j)</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Count (1-100)</label><input id="af-count" type="number" min="1" max="100" value="10"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>ID Prefix</label><input id="af-prefix" placeholder="FLEET"></div>
+      <div class="form-group"><label>Site Name</label><input id="af-site" value="default"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-green" onclick="spawnFleet()">Start Fleet</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<script>
+/* ─── State ────────────────────────────────────────────────────────────── */
+const S={
+  chargers:[],selectedCp:null,events:[],logFilter:'all',
+  settings:{},scenarioActive:null,connected:false,
+  metricsHistory:{msgs:[],latency:[],connections:[],errors:[]},
+  maxHistory:120
+};
+
+/* ─── API helpers ──────────────────────────────────────────────────────── */
+const api=async(path,opts={})=>{
+  try{
+    const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json'},...opts});
+    if(!r.ok)throw new Error(`${r.status} ${r.statusText}`);
+    return r.json();
+  }catch(e){S.connected=false;updateConn();throw e}
+};
+const post=(p,b)=>api(p,{method:'POST',body:JSON.stringify(b||{})});
+const put=(p,b)=>api(p,{method:'PUT',body:JSON.stringify(b||{})});
+const del=p=>api(p,{method:'DELETE'});
+
+/* ─── Toast ────────────────────────────────────────────────────────────── */
+function toast(msg,type='info'){
+  const d=document.createElement('div');
+  d.className='toast '+type;
+  d.textContent=msg;
+  document.getElementById('toasts').appendChild(d);
+  setTimeout(()=>{d.style.animation='fadeOut 0.3s ease forwards';setTimeout(()=>d.remove(),300)},3500);
+}
+
+/* ─── Connection ───────────────────────────────────────────────────────── */
+function updateConn(){
+  const dot=document.getElementById('conn-dot');
+  const lbl=document.getElementById('conn-label');
+  dot.className='conn-dot '+(S.connected?'ok':'err');
+  lbl.textContent=S.connected?'Connected':'Disconnected';
+}
+
+/* ─── Tabs ─────────────────────────────────────────────────────────────── */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-'+t.dataset.tab).classList.add('active');
+    localStorage.setItem('vcf-tab',t.dataset.tab);
+    if(t.dataset.tab==='reports')loadReports();
+    if(t.dataset.tab==='metrics')drawCharts();
+  };
+});
+const savedTab=localStorage.getItem('vcf-tab');
+if(savedTab){
+  document.querySelectorAll('.tab').forEach(t=>{if(t.dataset.tab===savedTab)t.click()});
+}
+
+/* ─── Modal ────────────────────────────────────────────────────────────── */
+function openModal(id){document.getElementById('modal-'+id).classList.add('open')}
+function closeModal(id){document.getElementById('modal-'+id).classList.remove('open')}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));
+});
+
+/* ─── Overview ─────────────────────────────────────────────────────────── */
+async function refreshStatus(){
+  try{
+    const d=await api('/status');
+    S.connected=true;updateConn();
+    document.getElementById('ov-total').textContent=d.total_chargers;
+    document.getElementById('ov-connected').textContent=d.connected;
+    document.getElementById('ov-charging').textContent=d.charging;
+    document.getElementById('ov-v2g').textContent=d.discharging;
+    document.getElementById('ov-errors').textContent=d.errors;
+    document.getElementById('ov-msgrate').textContent=d.messages_per_sec;
+    document.getElementById('ov-latency').textContent=Math.round(d.avg_latency_ms);
+    if(d.scenario_active){
+      S.scenarioActive=d.scenario_active;
+      document.getElementById('active-scenario').style.display='';
+      document.getElementById('active-scenario-name').textContent='Running: '+d.scenario_active;
+    }else{
+      S.scenarioActive=null;
+      document.getElementById('active-scenario').style.display='none';
+    }
+  }catch(e){S.connected=false;updateConn()}
+}
+
+/* ─── Chargers ─────────────────────────────────────────────────────────── */
+async function refreshChargers(){
+  try{
+    S.chargers=await api('/chargers');
+    renderChargers();
+  }catch(e){}
+}
+
+function renderChargers(){
+  const grid=document.getElementById('charger-grid');
+  const empty=document.getElementById('farm-empty');
+  if(!S.chargers.length){grid.innerHTML='';empty.style.display='';return}
+  empty.style.display='none';
+  grid.innerHTML=S.chargers.map(c=>{
+    const conns=c.connectors||c.evses||{};
+    let status='available',power=0,maxKw=c.max_kw||120,soc=null,direction=null;
+    for(const k in conns){
+      const cn=conns[k];
+      if(cn.status){
+        const s=cn.status.toLowerCase();
+        if(s==='charging')status='charging';
+        else if(s==='faulted')status='error';
+        else if(s==='unavailable')status='unavailable';
+      }
+      if(cn.power_kw)power=Math.max(power,cn.power_kw);
+      if(cn.soc!=null)soc=cn.soc;
+      if(cn.direction==='discharging'){status='discharging';direction='v2g'}
+      if(cn.direction==='charging')direction='charging';
+    }
+    if(!c.is_connected)status='offline';
+    const pct=maxKw>0?Math.min(100,power/maxKw*100):0;
+    const ver=c.ocpp_version||'1.6';
+    const is201=ver.includes('2.0');
+    const sel=S.selectedCp===c.cp_id?'selected':'';
+    return `<div class="charger-card ${sel}" onclick="selectCharger('${c.cp_id}')">
+      <div class="cc-header">
+        <span class="cc-id">${c.cp_id}</span>
+        <div class="cc-badges">
+          <span class="badge badge-profile">${c.profile||''}</span>
+          <span class="badge ${is201?'badge-201':'badge-16'}">${is201?'2.0.1':'1.6j'}</span>
+        </div>
+      </div>
+      <div class="cc-status"><span class="status-dot ${status}"></span>${status}${soc!=null?' &middot; SoC '+Math.round(soc)+'%':''}${direction==='v2g'?' &middot; V2G':''}</div>
+      <div class="power-bar-wrap"><div class="power-bar${direction==='v2g'?' v2g':''}" style="width:${pct}%"></div></div>
+      <div class="cc-stats"><span>${power.toFixed(1)} kW / ${maxKw} kW</span></div>
+    </div>`;
+  }).join('');
+}
+
+function selectCharger(cpId){
+  if(S.selectedCp===cpId){S.selectedCp=null;document.getElementById('charger-detail').className='charger-detail';return}
+  S.selectedCp=cpId;
+  renderChargers();
+  renderDetail(cpId);
+}
+
+function renderDetail(cpId){
+  const c=S.chargers.find(x=>x.cp_id===cpId);
+  if(!c){document.getElementById('charger-detail').className='charger-detail';return}
+  const dd=document.getElementById('charger-detail');
+  dd.className='charger-detail open';
+  dd.innerHTML=`
+    <div class="detail-grid">
+      <div class="detail-section">
+        <h4>Actions</h4>
+        <div class="detail-actions">
+          <button class="btn btn-sm btn-green" onclick="chargerAction('${cpId}','start')">Start Session</button>
+          <button class="btn btn-sm btn-red" onclick="chargerAction('${cpId}','stop')">Stop Session</button>
+          <button class="btn btn-sm btn-blue" onclick="chargerAction('${cpId}','v2g-start')">V2G Start</button>
+          <button class="btn btn-sm btn-outline" onclick="chargerAction('${cpId}','v2g-stop')">V2G Stop</button>
+          <button class="btn btn-sm btn-outline" onclick="chargerAction('${cpId}','pnc')">P&C Trigger</button>
+        </div>
+        <div class="detail-actions">
+          <select id="err-select-${cpId}" style="padding:4px 8px;font-size:12px">
+            <option>InternalError</option><option>GroundFailure</option><option>OverCurrentFailure</option>
+            <option>HighTemperature</option><option>ConnectorLockFailure</option><option>PowerMeterFailure</option>
+          </select>
+          <button class="btn btn-sm btn-red" onclick="injectError('${cpId}')">Inject Error</button>
+        </div>
+      </div>
+      <div class="detail-section">
+        <h4>Network</h4>
+        <div class="slider-row"><label>Latency</label><input type="range" min="0" max="5000" step="50" value="0" id="lat-${cpId}" oninput="this.nextElementSibling.textContent=this.value+'ms'"><span class="val">0ms</span></div>
+        <div class="slider-row"><label>Loss %</label><input type="range" min="0" max="100" step="1" value="0" id="loss-${cpId}" oninput="this.nextElementSibling.textContent=this.value+'%'"><span class="val">0%</span></div>
+        <div class="slider-row"><label>Jitter</label><input type="range" min="0" max="1000" step="10" value="0" id="jit-${cpId}" oninput="this.nextElementSibling.textContent=this.value+'ms'"><span class="val">0ms</span></div>
+        <div class="detail-actions mt-12">
+          <button class="btn btn-sm btn-red" onclick="chargerAction('${cpId}','disconnect')">Disconnect</button>
+          <button class="btn btn-sm btn-green" onclick="chargerAction('${cpId}','reconnect')">Reconnect</button>
+          <button class="btn btn-sm btn-outline" onclick="removeCharger('${cpId}')">Remove</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function chargerAction(cpId,action){
+  try{
+    if(action==='start')await post(`/chargers/${cpId}/start`,{connector_id:1,id_tag:'VIRTUAL-TAG'});
+    else if(action==='stop')await post(`/chargers/${cpId}/stop`,{connector_id:1});
+    else if(action==='disconnect')await post(`/chargers/${cpId}/disconnect`);
+    else if(action==='reconnect')await post(`/chargers/${cpId}/reconnect`);
+    else if(action==='v2g-start')await post(`/chargers/${cpId}/v2g`,{action:'start',max_kw:50});
+    else if(action==='v2g-stop')await post(`/chargers/${cpId}/v2g`,{action:'stop'});
+    else if(action==='pnc')await post(`/chargers/${cpId}/pnc`,{connector_id:1});
+    toast(`${action} sent to ${cpId}`,'success');
+  }catch(e){toast(`Failed: ${e.message}`,'error')}
+}
+
+async function injectError(cpId){
+  const sel=document.getElementById('err-select-'+cpId);
+  try{
+    await post(`/chargers/${cpId}/error`,{error_code:sel.value});
+    toast(`Error ${sel.value} injected on ${cpId}`,'success');
+  }catch(e){toast(`Failed: ${e.message}`,'error')}
+}
+
+async function removeCharger(cpId){
+  try{await del(`/chargers/${cpId}`);toast(`Removed ${cpId}`,'success');S.selectedCp=null;document.getElementById('charger-detail').className='charger-detail'}catch(e){toast(`Failed: ${e.message}`,'error')}
+}
+
+async function stopAll(){
+  try{
+    for(const c of S.chargers)await del(`/chargers/${c.cp_id}`).catch(()=>{});
+    toast('All chargers stopped','success');
+  }catch(e){toast(`Failed: ${e.message}`,'error')}
+}
+
+/* ─── Spawn Charger ────────────────────────────────────────────────────── */
+function acProfileChange(){
+  const p=document.getElementById('ac-profile').value;
+  const auto={
+    'ENC-DCL120B':'2.0.1','ENC-DCL120B-16':'1.6','ENC-DCL060B':'1.6','ENC-DCX030A':'1.6'
+  };
+}
+
+async function spawnCharger(){
+  const profile=document.getElementById('ac-profile').value;
+  const version=document.getElementById('ac-version').value||undefined;
+  const cpid=document.getElementById('ac-cpid').value||profile+'-'+String(Date.now()).slice(-6);
+  const site=document.getElementById('ac-site').value||'default';
+  const quirks=document.getElementById('ac-quirks').checked;
+  const pnc=document.getElementById('ac-pnc').checked;
+  try{
+    await post('/chargers',{cp_id:cpid,profile,ocpp_version:version,site_id:site,quirks,pnc,count:1});
+    toast(`Charger ${cpid} spawned`,'success');
+    closeModal('addCharger');
+  }catch(e){toast(`Failed: ${e.message}`,'error')}
+}
+
+async function spawnFleet(){
+  const profile=document.getElementById('af-profile').value;
+  const count=parseInt(document.getElementById('af-count').value)||10;
+  const prefix=document.getElementById('af-prefix').value||'FLEET';
+  const site=document.getElementById('af-site').value||'default';
+  try{
+    await post('/chargers',{cp_id:prefix,profile,site_id:site,count,quirks:true});
+    toast(`Fleet of ${count} chargers spawning`,'success');
+    closeModal('addFleet');
+  }catch(e){toast(`Failed: ${e.message}`,'error')}
+}
+
+/* ─── Scenarios ────────────────────────────────────────────────────────── */
+async function loadScenarios(){
+  try{
+    const list=await api('/scenarios');
+    const el=document.getElementById('scenario-list');
+    el.innerHTML=list.map(s=>`
+      <div class="scenario-card">
+        <div class="scenario-info"><h3>${s.name.replace(/_/g,' ')}</h3><p>${s.description}</p></div>
+        <div class="scenario-controls">
+          <select id="int-${s.name}" style="padding:5px 8px;font-size:12px">
+            <option>low</option><option selected>medium</option><option>high</option><option>extreme</option>
+          </select>
+          <button class="btn btn-sm btn-green" onclick="runScenario('${s.name}')" ${S.scenarioActive?'disabled':''}>Start</button>
+        </div>
+      </div>`).join('');
+  }catch(e){}
+}
+
+async function runScenario(name){
+  const int=document.getElementById('int-'+name)?.value||'medium';
+  try{
+    await post(`/scenarios/${name}`,{intensity:int});
+    toast(`Scenario ${name} started`,'success');
+  }catch(e){toast(`Failed: ${e.message}`,'error')}
+}
+
+async function stopScenario(){
+  try{await del('/scenarios/active');toast('Scenario stopped','success')}catch(e){toast(`Failed: ${e.message}`,'error')}
+}
+
+/* ─── Network Presets ──────────────────────────────────────────────────── */
+const NET_PRESETS={
+  clean:{chaos_intensity:'calm'},
+  starlink:{chaos_intensity:'calm'},
+  '4g':{chaos_intensity:'stormy'},
+  hell:{chaos_intensity:'apocalypse'}
+};
+function applyNetPreset(name){
+  document.querySelectorAll('.net-preset').forEach(p=>p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  const p=NET_PRESETS[name];
+  const chaosMap={calm:0,stormy:2,apocalypse:3};
+  put('/environment',p).then(()=>toast('Network preset: '+name,'info')).catch(()=>{});
+}
+
+/* ─── Environment ──────────────────────────────────────────────────────── */
+function updateEnv(){
+  const temp=parseInt(document.getElementById('temp-slider').value);
+  const grid=parseInt(document.getElementById('grid-slider').value);
+  document.getElementById('temp-label').textContent=temp+' C';
+  document.getElementById('grid-label').textContent=grid+'%';
+  put('/environment',{ambient_temp_c:temp,grid_voltage_pct:grid}).catch(()=>{});
+}
+function setTemp(v){
+  document.getElementById('temp-slider').value=v;
+  document.querySelectorAll('#panel-environment .env-card:first-child .env-preset').forEach(p=>p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  updateEnv();
+}
+function setGrid(v){
+  document.getElementById('grid-slider').value=v;
+  document.querySelectorAll('#panel-environment .env-card:nth-child(2) .env-preset').forEach(p=>p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  updateEnv();
+}
+function updateChaos(){
+  const v=parseInt(document.getElementById('chaos-slider').value);
+  const labels=['Calm','Moderate','Stormy','Apocalypse'];
+  const intensities=['calm','moderate','stormy','apocalypse'];
+  document.getElementById('chaos-label').textContent=labels[v];
+  put('/environment',{chaos_intensity:intensities[v]}).catch(()=>{});
+}
+
+/* ─── Metrics Charts ───────────────────────────────────────────────────── */
+function pushMetric(arr,val){arr.push(val);if(arr.length>S.maxHistory)arr.shift()}
+
+function drawChart(canvasId,data,color,label){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  canvas.width=rect.width*dpr;
+  canvas.height=rect.height*dpr;
+  ctx.scale(dpr,dpr);
+  const W=rect.width,H=rect.height;
+  ctx.clearRect(0,0,W,H);
+  if(!data.length)return;
+  const max=Math.max(...data,1);
+  const step=W/(S.maxHistory-1);
+  // Grid
+  ctx.strokeStyle='rgba(30,64,96,0.5)';ctx.lineWidth=0.5;
+  for(let i=0;i<4;i++){const y=H/4*i;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  // Line
+  ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=1.5;
+  for(let i=0;i<data.length;i++){
+    const x=i*step,y=H-data[i]/max*(H-20)-10;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  // Fill
+  ctx.lineTo((data.length-1)*step,H);ctx.lineTo(0,H);ctx.closePath();
+  ctx.fillStyle=color.replace(')',',0.1)').replace('rgb','rgba');ctx.fill();
+  // Label
+  ctx.fillStyle='#999';ctx.font='10px sans-serif';
+  ctx.fillText(data[data.length-1].toFixed(1)+' '+label,4,12);
+}
+
+function drawCharts(){
+  drawChart('chart-msgs',S.metricsHistory.msgs,'rgb(0,176,228)','msg/s');
+  drawChart('chart-latency',S.metricsHistory.latency,'rgb(255,136,0)','ms');
+  drawChart('chart-connections',S.metricsHistory.connections,'rgb(132,189,0)','conn');
+  drawChart('chart-errors',S.metricsHistory.errors,'rgb(255,68,68)','err');
+}
+
+/* ─── Reports ──────────────────────────────────────────────────────────── */
+async function loadReports(){
+  try{
+    const list=await api('/reports');
+    const el=document.getElementById('report-list');
+    const empty=document.getElementById('reports-empty');
+    if(!list.length){el.innerHTML='';empty.style.display='';return}
+    empty.style.display='none';
+    el.innerHTML=list.map(r=>`
+      <div class="report-row" onclick="viewReport('${r.id}')">
+        <div>
+          <strong>${r.scenario}</strong>
+          <div class="report-meta"><span>${r.generated_at}</span></div>
+        </div>
+        <div class="report-actions">
+          <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();downloadReport('${r.id}','json')">JSON</button>
+          <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();downloadReport('${r.id}','html')">HTML</button>
+        </div>
+      </div>`).join('');
+  }catch(e){}
+}
+
+async function viewReport(id){
+  const v=document.getElementById('report-viewer');
+  v.style.display='block';
+  v.innerHTML='<iframe src="/api/reports/'+id+'?format=html"></iframe>';
+}
+
+function downloadReport(id,fmt){
+  window.open('/api/reports/'+id+'?format='+fmt,'_blank');
+}
+
+/* ─── Log Panel ────────────────────────────────────────────────────────── */
+function toggleLog(){
+  const lp=document.getElementById('log-panel');
+  lp.classList.toggle('collapsed');
+  lp.classList.toggle('expanded');
+  localStorage.setItem('vcf-log',lp.classList.contains('collapsed')?'c':'e');
+}
+if(localStorage.getItem('vcf-log')==='c'){document.getElementById('log-panel').classList.replace('expanded','collapsed')}
+
+function addLogEntry(ev){
+  S.events.push(ev);
+  if(S.events.length>500)S.events.shift();
+  document.getElementById('log-count').textContent='('+S.events.length+')';
+  renderLog();
+}
+
+function renderLog(){
+  const el=document.getElementById('log-content');
+  const filter=S.logFilter;
+  const search=document.getElementById('log-search').value.toLowerCase();
+  let filtered=S.events;
+  if(filter!=='all'){
+    filtered=filtered.filter(e=>{
+      if(filter==='error')return e.level==='error';
+      if(filter==='connect')return e.message&&(e.message.includes('onnect')||e.message.includes('Spawn'));
+      if(filter==='scenario')return e.source&&e.source.includes('scenario');
+      if(filter==='ocpp')return e.source&&!e.source.includes('scenario')&&!e.source.includes('farm');
+      return true;
+    });
+  }
+  if(search)filtered=filtered.filter(e=>(e.message||'').toLowerCase().includes(search)||(e.source||'').toLowerCase().includes(search));
+  const last50=filtered.slice(-80);
+  el.innerHTML=last50.map(e=>{
+    const ts=new Date((e.timestamp||0)*1000).toLocaleTimeString();
+    const lvlCls=e.level==='error'?'lvl-error':e.level==='warn'?'lvl-warn':'lvl-info';
+    return `<div class="log-entry"><span class="ts">${ts}</span> <span class="src">[${e.source||'?'}]</span> <span class="${lvlCls}">${e.message||''}</span></div>`;
+  }).join('');
+  if(document.getElementById('log-autoscroll').checked)el.scrollTop=el.scrollHeight;
+}
+
+function setLogFilter(f,el){
+  S.logFilter=f;
+  document.querySelectorAll('.log-filter').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  renderLog();
+}
+function clearLog(){S.events=[];renderLog();document.getElementById('log-count').textContent='(0)'}
+
+/* ─── Settings ─────────────────────────────────────────────────────────── */
+async function loadSettings(){
+  try{
+    S.settings=await api('/settings');
+    document.getElementById('s-ocpp16').value=S.settings.ocpp16_url||'';
+    document.getElementById('s-ocpp201').value=S.settings.ocpp201_url||'';
+    document.getElementById('s-cpo').value=S.settings.cpo_api_url||'';
+    document.getElementById('s-redis').value=S.settings.redis_host||'';
+    document.getElementById('s-profile').value=S.settings.default_profile||'ENC-DCL120B-16';
+    document.getElementById('s-connmode').value=S.settings.connection_mode||'direct';
+    document.getElementById('s-tskey').value=S.settings.tailscale_auth_key||'';
+  }catch(e){}
+}
+async function saveSettings(){
+  try{
+    await put('/settings',{
+      ocpp16_url:document.getElementById('s-ocpp16').value,
+      ocpp201_url:document.getElementById('s-ocpp201').value,
+      cpo_api_url:document.getElementById('s-cpo').value,
+      redis_host:document.getElementById('s-redis').value,
+      default_profile:document.getElementById('s-profile').value,
+      connection_mode:document.getElementById('s-connmode').value,
+      tailscale_auth_key:document.getElementById('s-tskey').value,
+    });
+    toast('Settings saved','success');
+    closeModal('settings');
+  }catch(e){toast('Failed to save','error')}
+}
+function exportSettings(){
+  const blob=new Blob([JSON.stringify(S.settings,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='vcf-settings.json';a.click();
+}
+function importSettings(){
+  const input=document.createElement('input');input.type='file';input.accept='.json';
+  input.onchange=async e=>{
+    try{
+      const text=await e.target.files[0].text();
+      const settings=JSON.parse(text);
+      await put('/settings',settings);
+      loadSettings();
+      toast('Settings imported','success');
+    }catch(err){toast('Invalid settings file','error')}
+  };
+  input.click();
+}
+function resetSettings(){
+  if(confirm('Reset all settings to defaults?')){
+    put('/settings',{ocpp16_url:'ws://localhost:9100/ocpp',ocpp201_url:'ws://localhost:9201/ocpp',cpo_api_url:'',redis_host:'',default_profile:'ENC-DCL120B-16',connection_mode:'direct',tailscale_auth_key:''}).then(()=>{loadSettings();toast('Settings reset','info')});
+  }
+}
+
+/* ─── SSE ──────────────────────────────────────────────────────────────── */
+let eventSource=null;
+function connectSSE(){
+  if(eventSource)eventSource.close();
+  eventSource=new EventSource('/api/metrics/stream');
+  eventSource.onmessage=e=>{
+    try{
+      const d=JSON.parse(e.data);
+      if(d.type==='metrics'&&d.data){
+        const m=d.data;
+        pushMetric(S.metricsHistory.msgs,m.messages_per_sec||0);
+        pushMetric(S.metricsHistory.latency,m.avg_latency_ms||0);
+        pushMetric(S.metricsHistory.connections,m.total_connections||0);
+        pushMetric(S.metricsHistory.errors,m.total_errors||0);
+        if(document.querySelector('.tab[data-tab="metrics"]').classList.contains('active'))drawCharts();
+      }
+      if(d.type==='event'&&d.data){addLogEntry(d.data)}
+    }catch(err){}
+  };
+  eventSource.onerror=()=>{S.connected=false;updateConn();setTimeout(connectSSE,5000)};
+  eventSource.onopen=()=>{S.connected=true;updateConn()};
+}
+
+/* ─── Debounce ─────────────────────────────────────────────────────────── */
+const _debounceTimers={};
+function debounce(fn,ms){
+  return function(){
+    const key=fn.name||'_';
+    clearTimeout(_debounceTimers[key]);
+    _debounceTimers[key]=setTimeout(fn,ms);
+  };
+}
+
+/* ─── Keyboard Shortcuts ───────────────────────────────────────────────── */
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA')return;
+  if(e.code==='Space'&&S.scenarioActive){e.preventDefault();stopScenario()}
+});
+
+/* ─── Init ─────────────────────────────────────────────────────────────── */
+async function init(){
+  await loadSettings();
+  await loadScenarios();
+  connectSSE();
+  refreshStatus();
+  refreshChargers();
+  // Load initial events
+  try{const evts=await api('/events?limit=100');evts.forEach(e=>S.events.push(e));renderLog()}catch(e){}
+  // Polling loops
+  setInterval(refreshStatus,1000);
+  setInterval(refreshChargers,2000);
+}
+init();
+</script>
+</body>
+</html>

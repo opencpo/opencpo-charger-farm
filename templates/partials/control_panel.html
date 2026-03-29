@@ -1,0 +1,59 @@
+<section class="card" id="panel-control">
+  <div class="card-header">
+    <span class="card-title">🎛️ Farm Control</span>
+    <span id="scenario-badge" class="badge-scenario" style="display:none"></span>
+  </div>
+
+  <form id="farm-form" onsubmit="return false;">
+    <div class="form-row">
+      <label>Charger Count <span class="val" id="count-val">{{ farm_config.count }}</span></label>
+      <input type="range" min="1" max="100" value="{{ farm_config.count }}" id="count-slider"
+             oninput="document.getElementById('count-val').textContent=this.value">
+    </div>
+
+    <div class="form-row">
+      <label>OCPP Version</label>
+      <div class="toggle-group" id="ocpp-toggle">
+        <button type="button" class="toggle-btn {% if farm_config.ocpp_version == '1.6' %}active{% endif %}"
+                onclick="setOcppVersion('1.6', this)">1.6j</button>
+        <button type="button" class="toggle-btn {% if farm_config.ocpp_version == '2.0.1' %}active{% endif %}"
+                onclick="setOcppVersion('2.0.1', this)">2.0.1</button>
+        <button type="button" class="toggle-btn {% if farm_config.ocpp_version == 'mixed' %}active{% endif %}"
+                onclick="setOcppVersion('mixed', this)">Mixed</button>
+      </div>
+      <input type="hidden" id="ocpp-version" value="{{ farm_config.ocpp_version }}">
+    </div>
+
+    <div class="form-row">
+      <label>OCPP Server URL</label>
+      <input type="text" id="ocpp-url" value="{{ farm_config.ocpp_url }}" class="text-input"
+             placeholder="ws://127.0.0.1:9100/ocpp">
+    </div>
+
+    <div class="form-row">
+      <label>Vendor Profile</label>
+      <select id="profile-select" class="select-input">
+        {% for p in profiles %}
+        <option value="{{ p.name }}" {% if p.name == farm_config.profile %}selected{% endif %}>
+          {{ p.vendor }} — {{ p.name }} ({{ p.max_kw }}kW, OCPP {{ p.ocpp_version }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" onclick="startFarm()" id="btn-start">▶ Start Farm</button>
+      <button type="button" class="btn btn-danger" onclick="stopFarm()" id="btn-stop">■ Stop Farm</button>
+      <button type="button" class="btn btn-warning" onclick="pauseFarm()" id="btn-pause">⏸ Pause</button>
+      <button type="button" class="btn btn-secondary" onclick="resetCounters()" id="btn-reset" title="Reset all counters and event log">🔄 Reset Counters</button>
+    </div>
+  </form>
+
+  <div id="farm-status-text" class="status-text">
+    {% if farm.running %}
+      ● Farm running — {{ farm.connected }} connected, {{ farm.charging }} charging
+    {% else %}
+      ○ Farm stopped — click Start Farm to begin
+    {% endif %}
+  </div>
+</section>

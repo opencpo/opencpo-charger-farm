@@ -1,0 +1,39 @@
+<section class="card" id="panel-grid">
+  <div class="card-header">
+    <span class="card-title">🔌 Charger Grid</span>
+    <span class="muted" id="grid-count">0 chargers</span>
+  </div>
+  <div class="charger-grid" id="charger-grid">
+    <div class="grid-empty" id="grid-empty">No chargers running. Start the farm to see charger cards here.</div>
+  </div>
+
+  <!-- Charger action modal -->
+  <div id="charger-modal" class="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span id="modal-title">Charger Actions</span>
+        <button class="btn-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="muted" id="modal-status"></p>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" onclick="modalAction('session/start')">▶ Start Session</button>
+          <button class="btn btn-danger btn-sm" onclick="modalAction('session/stop')">■ Stop Session</button>
+          <button class="btn btn-warning btn-sm" onclick="modalAction('disconnect')">⚡ Disconnect</button>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <label>Inject Fault</label>
+          <select id="modal-fault-type" class="select-input">
+            <option value="InternalError">InternalError</option>
+            <option value="ConnectorLockFailure">ConnectorLockFailure</option>
+            <option value="GroundFailure">GroundFailure</option>
+            <option value="OverCurrentFailure">OverCurrentFailure</option>
+            <option value="PowerMeterFailure">PowerMeterFailure</option>
+            <option value="HighTemperature">HighTemperature</option>
+          </select>
+          <button class="btn btn-danger btn-sm" style="margin-top:6px" onclick="modalInjectFault()">💉 Inject</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,17 @@
+<section class="card collapsible" id="panel-log">
+  <div class="card-header" onclick="toggleLog()">
+    <span class="card-title">📋 Event Log</span>
+    <div class="log-controls" onclick="event.stopPropagation()">
+      <input type="text" id="log-filter-id" placeholder="Charger ID…" class="text-input text-input-sm">
+      <input type="text" id="log-filter-type" placeholder="Msg type…" class="text-input text-input-sm">
+      <button class="btn btn-sm btn-secondary" onclick="toggleLogPause()" id="btn-log-pause">⏸ Pause</button>
+      <button class="btn btn-sm btn-secondary" onclick="clearLog()">🗑 Clear</button>
+    </div>
+    <span class="collapse-icon" id="log-collapse-icon">▼</span>
+  </div>
+  <div id="log-body" class="log-body">
+    <div id="log-container" class="log-container">
+      <div class="log-line muted log-hint">Waiting for events… Connect via SSE stream at /api/events/stream</div>
+    </div>
+  </div>
+</section>

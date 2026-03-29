@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Charger Farm Manager{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-title">🔌 Virtual Charger Farm</div>
+  <div id="farm-status-badge" class="status-badge {% if farm.running %}running{% else %}stopped{% endif %}">
+    {% if farm.running %}
+      ● {{ farm.connected }}/{{ farm.total_chargers }} connected, {{ farm.charging }} charging
+    {% else %}
+      ○ Farm stopped
+    {% endif %}
+  </div>
+</div>
+
+<div class="dashboard-grid">
+
+  <!-- Left column: Control + Conditions + Scenarios -->
+  <div class="col-left">
+    {% include "partials/control_panel.html" %}
+    {% include "partials/conditions.html" %}
+    {% include "partials/scenarios.html" %}
+  </div>
+
+  <!-- Right column: Metrics + Charger Grid + Event Log -->
+  <div class="col-right">
+    {% include "partials/metrics.html" %}
+    {% include "partials/charger_grid.html" %}
+    {% include "partials/event_log.html" %}
+  </div>
+
+</div>
+
+{% endblock %}

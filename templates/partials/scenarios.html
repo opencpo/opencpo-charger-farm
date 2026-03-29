@@ -1,0 +1,57 @@
+<section class="card" id="panel-scenarios">
+  <div class="card-header">
+    <span class="card-title">🧪 Scenarios</span>
+    <span id="scenario-status" class="muted">None active</span>
+  </div>
+
+  <div class="scenario-list">
+    {% set builtin_scenarios = [
+      ("stress_test", "💪 Stress Test", "50 chargers, all charging, 30s"),
+      ("reconnect_storm", "⚡ Reconnect Storm", "All disconnect + reconnect in 5s"),
+      ("fault_cascade", "💥 Fault Cascade", "Random faults every 10s"),
+      ("peak_load", "📈 Peak Load", "Ramp 0→100 chargers over 60s"),
+      ("firmware_update", "🔄 Firmware Update", "Trigger update flow on all"),
+      ("pnc_full_flow", "🔐 P&C Full Flow", "Connect with cert, auto-auth, charge"),
+    ] %}
+    {% for key, label, desc in builtin_scenarios %}
+    <div class="scenario-card">
+      <div class="scenario-info">
+        <div class="scenario-name">{{ label }}</div>
+        <div class="scenario-desc muted">{{ desc }}</div>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="runScenario('{{ key }}')">▶ Run</button>
+    </div>
+    {% endfor %}
+
+    {% if scenarios %}
+    {% for s in scenarios %}
+    <div class="scenario-card">
+      <div class="scenario-info">
+        <div class="scenario-name">{{ s.name }}</div>
+        <div class="scenario-desc muted">{{ s.description }}</div>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="runScenario('{{ s.name }}')">▶ Run</button>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+
+  <!-- Custom Scenario Builder -->
+  <div class="section-label" style="margin-top:12px">Custom Scenario</div>
+  <div class="form-row">
+    <label>Name</label>
+    <input type="text" id="custom-name" class="text-input" placeholder="My Scenario">
+  </div>
+  <div class="form-row">
+    <label>Chargers</label>
+    <input type="number" id="custom-count" class="text-input" value="10" min="1" max="100">
+  </div>
+  <div class="form-row">
+    <label>Duration (s)</label>
+    <input type="number" id="custom-duration" class="text-input" value="60" min="5">
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary btn-sm" onclick="saveCustomScenario()">💾 Save</button>
+    <button class="btn btn-warning btn-sm" onclick="runCustomScenario()">▶ Run Now</button>
+  </div>
+</section>
