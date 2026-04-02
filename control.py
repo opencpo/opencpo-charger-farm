@@ -22,6 +22,7 @@ import uvicorn
 from profiles import PROFILES, get_profile, list_profiles, QuirkConfig, OcppVersion, MAXPOWER_QUIRKS, NO_QUIRKS
 from metrics import farm_metrics
 from environment import EnvironmentSimulator
+from location_push import push_location
 from pnc import PnCConfig
 from charger16 import VirtualCharger16
 from charger201 import VirtualCharger201
@@ -43,11 +44,16 @@ DEFAULT_SETTINGS = {
     "ocpp16_url": os.environ.get("OCPP16_URL", "ws://localhost:9100/ocpp"),
     "ocpp201_url": os.environ.get("OCPP201_URL", "ws://localhost:9201/ocpp"),
     "cpo_api_url": os.environ.get("CPO_API_URL", ""),
+    "cpo_api_key": os.environ.get("CPO_API_KEY", ""),
     "redis_host": os.environ.get("REDIS_HOST", ""),
     "default_profile": "ENC-DCL120B-16",
     "default_quirks_enabled": True,
     "connection_mode": "direct",
     "tailscale_auth_key": "",
+    # Demo location injection — set simulated=false and assign real Amsterdam coords
+    # Requires CPO_API_URL and CPO_API_KEY. Enabled by default when both are set.
+    "demo_locations": os.environ.get("DEMO_LOCATIONS", "true").lower() != "false",
+    "demo_city": os.environ.get("DEMO_CITY", "Amsterdam"),
 }
 
 
@@ -76,6 +82,7 @@ class ChargerFarm:
         self.chargers: dict[str, VirtualCharger16 | VirtualCharger201] = {}
         self.tasks: dict[str, asyncio.Task] = {}
         self.settings: dict = load_settings()
+        self._spawn_count: int = 0  # monotonic counter for location cycling
         self.env_sim = EnvironmentSimulator()
         self.active_scenario: Optional[BaseScenario] = None
         self.scenario_task: Optional[asyncio.Task] = None
@@ -138,6 +145,18 @@ class ChargerFarm:
 
         self.chargers[cp_id] = charger
         self.tasks[cp_id] = asyncio.create_task(self._run_charger(cp_id, charger))
+
+        # Inject location metadata via Core API (non-blocking, best-effort)
+        if self.settings.get("demo_locations", True):
+            asyncio.create_task(push_location(
+                cp_id=cp_id,
+                location_index=self._spawn_count,
+                api_url=self.settings.get("cpo_api_url", ""),
+                api_key=self.settings.get("cpo_api_key", ""),
+                log_event_fn=farm_metrics.log_event,
+            ))
+        self._spawn_count += 1
+
         farm_metrics.log_event("info", "farm", f"Spawned {cp_id} ({profile_name}, OCPP {version})")
         return charger
 

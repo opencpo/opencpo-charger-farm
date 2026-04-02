@@ -9,6 +9,9 @@ services:
       OCPP16_URL: "${OCPP16_URL:-ws://host.docker.internal:9100/ocpp}"
       OCPP201_URL: "${OCPP201_URL:-ws://host.docker.internal:9201/ocpp}"
       CPO_API_URL: "${CPO_API_URL:-}"
+      CPO_API_KEY: "${CPO_API_KEY:-}"
+      DEMO_LOCATIONS: "${DEMO_LOCATIONS:-true}"
+      DEMO_CITY: "${DEMO_CITY:-Amsterdam}"
       REDIS_HOST: "${REDIS_HOST:-}"
     restart: unless-stopped
     volumes:
