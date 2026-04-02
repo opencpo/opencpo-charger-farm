@@ -24,9 +24,8 @@ REPORTS_DIR.mkdir(exist_ok=True)
 class ReportGenerator:
     """Generates test reports after scenario runs."""
 
-    def __init__(self, cpo_api_url: str = "", redis_host: str = ""):
+    def __init__(self, cpo_api_url: str = ""):
         self.cpo_api_url = cpo_api_url
-        self.redis_host = redis_host
 
     async def generate(
         self,
@@ -101,7 +100,6 @@ class ReportGenerator:
             "sessions_ended": farm_metrics.total_sessions_ended,
             "orphaned_sessions": max(0, farm_metrics.total_sessions_started - farm_metrics.total_sessions_ended),
             "cpo_validation": None,
-            "stale_redis_keys": None,
         }
 
         # CPO API validation
@@ -117,19 +115,6 @@ class ReportGenerator:
                             }
             except Exception as e:
                 result["cpo_validation"] = {"reachable": False, "error": str(e)}
-
-        # Redis stale key check
-        if self.redis_host:
-            try:
-                import redis
-                r = redis.Redis(host=self.redis_host, port=6379, decode_responses=True)
-                keys = r.keys("ocpp:*")
-                result["stale_redis_keys"] = {
-                    "total_keys": len(keys),
-                    "keys": keys[:50],  # First 50
-                }
-            except Exception as e:
-                result["stale_redis_keys"] = {"error": str(e)}
 
         return result
 

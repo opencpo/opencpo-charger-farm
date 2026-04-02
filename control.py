@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Virtual Charger Farm — FastAPI Control Plane.
+Virtual Charger Farm — FastAPI Control Plane (routes only).
 Main entry point. Run with: uvicorn control:app --host 0.0.0.0 --port 8086
 """
 
@@ -8,9 +8,6 @@ import asyncio
 import json
 import logging
 import os
-import signal
-import sys
-import time
 from pathlib import Path
 from typing import Optional
 
@@ -19,15 +16,11 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
-from profiles import PROFILES, get_profile, list_profiles, QuirkConfig, OcppVersion, MAXPOWER_QUIRKS, NO_QUIRKS
+from farm import ChargerFarm, save_settings
+from profiles import MAXPOWER_QUIRKS, NO_QUIRKS
 from metrics import farm_metrics
-from environment import EnvironmentSimulator
-from location_push import push_location
-from pnc import PnCConfig
-from charger16 import VirtualCharger16
-from charger201 import VirtualCharger201
-from scenarios import SCENARIOS, list_scenarios, BaseScenario
-from reports import ReportGenerator, list_reports, get_report
+from reports import list_reports, get_report
+from scenarios import SCENARIOS, list_scenarios
 
 log = logging.getLogger(__name__)
 logging.basicConfig(
@@ -36,202 +29,12 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-# ─── Settings ────────────────────────────────────────────────────────────────
-
-SETTINGS_FILE = Path(__file__).parent / "settings.json"
-
-DEFAULT_SETTINGS = {
-    "ocpp16_url": os.environ.get("OCPP16_URL", "ws://localhost:9100/ocpp"),
-    "ocpp201_url": os.environ.get("OCPP201_URL", "ws://localhost:9201/ocpp"),
-    "cpo_api_url": os.environ.get("CPO_API_URL", ""),
-    "cpo_api_key": os.environ.get("CPO_API_KEY", ""),
-    "redis_host": os.environ.get("REDIS_HOST", ""),
-    "default_profile": "ENC-DCL120B-16",
-    "default_quirks_enabled": True,
-    "connection_mode": "direct",
-    "tailscale_auth_key": "",
-    # Demo location injection — set simulated=false and assign real Amsterdam coords
-    # Requires CPO_API_URL and CPO_API_KEY. Enabled by default when both are set.
-    "demo_locations": os.environ.get("DEMO_LOCATIONS", "true").lower() != "false",
-    "demo_city": os.environ.get("DEMO_CITY", "Amsterdam"),
-}
-
-
-def load_settings() -> dict:
-    if SETTINGS_FILE.exists():
-        try:
-            with open(SETTINGS_FILE) as f:
-                saved = json.load(f)
-                return {**DEFAULT_SETTINGS, **saved}
-        except Exception:
-            pass
-    return dict(DEFAULT_SETTINGS)
-
-
-def save_settings(settings: dict) -> None:
-    with open(SETTINGS_FILE, "w") as f:
-        json.dump(settings, f, indent=2)
-
-
-# ─── Charger Farm ────────────────────────────────────────────────────────────
-
-class ChargerFarm:
-    """Manages all virtual charger instances."""
-
-    def __init__(self):
-        self.chargers: dict[str, VirtualCharger16 | VirtualCharger201] = {}
-        self.tasks: dict[str, asyncio.Task] = {}
-        self.settings: dict = load_settings()
-        self._spawn_count: int = 0  # monotonic counter for location cycling
-        self.env_sim = EnvironmentSimulator()
-        self.active_scenario: Optional[BaseScenario] = None
-        self.scenario_task: Optional[asyncio.Task] = None
-        self.report_gen = ReportGenerator(
-            cpo_api_url=self.settings.get("cpo_api_url", ""),
-            redis_host=self.settings.get("redis_host", ""),
-        )
-
-    def get_charger(self, cp_id: str):
-        return self.chargers.get(cp_id)
-
-    async def spawn_charger(
-        self,
-        cp_id: str,
-        profile_name: str = None,
-        ocpp_version: str = None,
-        quirks: Optional[QuirkConfig] = None,
-        site_id: str = "default",
-        pnc_enabled: bool = False,
-    ) -> Optional[object]:
-        if cp_id in self.chargers:
-            return self.chargers[cp_id]
-
-        profile_name = profile_name or self.settings.get("default_profile", "ENC-DCL120B-16")
-        try:
-            profile = get_profile(profile_name)
-        except KeyError:
-            return None
-
-        if quirks is None:
-            quirks = MAXPOWER_QUIRKS if self.settings.get("default_quirks_enabled", True) else NO_QUIRKS
-
-        pnc_config = PnCConfig(enabled=pnc_enabled)
-
-        # Determine OCPP version from profile or override
-        version = ocpp_version or profile.ocpp_version.value
-
-        if version == "2.0.1":
-            ws_url = self.settings["ocpp201_url"]
-            charger = VirtualCharger201(
-                cp_id=cp_id,
-                profile=profile,
-                ws_url=ws_url,
-                quirks=quirks,
-                site_id=site_id,
-                env_sim=self.env_sim,
-                pnc_config=pnc_config,
-            )
-        else:
-            ws_url = self.settings["ocpp16_url"]
-            charger = VirtualCharger16(
-                cp_id=cp_id,
-                profile=profile,
-                ws_url=ws_url,
-                quirks=quirks,
-                site_id=site_id,
-                env_sim=self.env_sim,
-                pnc_config=pnc_config,
-            )
-
-        self.chargers[cp_id] = charger
-        self.tasks[cp_id] = asyncio.create_task(self._run_charger(cp_id, charger))
-
-        # Inject location metadata via Core API (non-blocking, best-effort)
-        if self.settings.get("demo_locations", True):
-            asyncio.create_task(push_location(
-                cp_id=cp_id,
-                location_index=self._spawn_count,
-                api_url=self.settings.get("cpo_api_url", ""),
-                api_key=self.settings.get("cpo_api_key", ""),
-                log_event_fn=farm_metrics.log_event,
-            ))
-        self._spawn_count += 1
-
-        farm_metrics.log_event("info", "farm", f"Spawned {cp_id} ({profile_name}, OCPP {version})")
-        return charger
-
-    async def _run_charger(self, cp_id: str, charger):
-        try:
-            await charger.start()
-        except Exception as e:
-            farm_metrics.log_event("error", cp_id, f"Charger crashed: {e}")
-            farm_metrics.record_error()
-        finally:
-            self.chargers.pop(cp_id, None)
-            self.tasks.pop(cp_id, None)
-
-    async def stop_charger(self, cp_id: str) -> bool:
-        charger = self.chargers.get(cp_id)
-        if not charger:
-            return False
-        await charger.stop()
-        task = self.tasks.pop(cp_id, None)
-        if task:
-            task.cancel()
-            try:
-                await task
-            except (asyncio.CancelledError, Exception):
-                pass
-        self.chargers.pop(cp_id, None)
-        farm_metrics.log_event("info", "farm", f"Stopped {cp_id}")
-        return True
-
-    async def stop_all(self):
-        for cp_id in list(self.chargers.keys()):
-            await self.stop_charger(cp_id)
-
-    def status(self) -> dict:
-        total = len(self.chargers)
-        connected = 0
-        charging = 0
-        discharging = 0
-        errors = 0
-
-        for charger in self.chargers.values():
-            if charger.is_connected:
-                connected += 1
-            summary = charger.status_summary
-            # Check connectors/evses for charging state
-            conns = summary.get("connectors", summary.get("evses", {}))
-            for c in conns.values():
-                if c.get("direction") == "charging":
-                    charging += 1
-                elif c.get("direction") == "discharging":
-                    discharging += 1
-                if c.get("status") in ("Faulted", "faulted"):
-                    errors += 1
-
-        metrics = farm_metrics.snapshot()
-        return {
-            "total_chargers": total,
-            "connected": connected,
-            "charging": charging,
-            "discharging": discharging,
-            "errors": errors,
-            "messages_per_sec": metrics["messages_per_sec"],
-            "avg_latency_ms": metrics["avg_latency_ms"],
-            "scenario_active": self.active_scenario.name if self.active_scenario else None,
-            "environment": self.env_sim.status(),
-        }
-
-
-# ─── FastAPI App ─────────────────────────────────────────────────────────────
+# ─── App ─────────────────────────────────────────────────────────────────────
 
 farm = ChargerFarm()
 
 app = FastAPI(title="Virtual Charger Farm", version="1.0.0")
 
-# Static files
 static_dir = Path(__file__).parent / "static"
 static_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
@@ -242,7 +45,6 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 @app.on_event("startup")
 async def on_startup():
     farm_metrics.log_event("info", "farm", "Virtual Charger Farm started")
-    # Start metrics broadcast loop
     asyncio.create_task(_metrics_broadcast_loop())
 
 
@@ -267,7 +69,7 @@ async def serve_ui():
     index = static_dir / "index.html"
     if index.exists():
         return HTMLResponse(content=index.read_text())
-    return HTMLResponse(content="<h1>Virtual Charger Farm</h1><p>UI not found. Place index.html in static/</p>")
+    return HTMLResponse(content="<h1>Virtual Charger Farm</h1><p>UI not found.</p>")
 
 
 # ─── API: Status ─────────────────────────────────────────────────────────────
@@ -294,16 +96,13 @@ async def api_spawn_charger(request: Request):
     site_id = body.get("site_id", "default")
     quirks_enabled = body.get("quirks", farm.settings.get("default_quirks_enabled", True))
     pnc = body.get("pnc", False)
-
     quirks = MAXPOWER_QUIRKS if quirks_enabled else NO_QUIRKS
-
     spawned = []
     for i in range(count):
         cid = cp_id if count == 1 else f"{cp_id or profile}-{i+1:04d}"
         charger = await farm.spawn_charger(cid, profile, ocpp_version, quirks, site_id, pnc)
         if charger:
             spawned.append(cid)
-
     return {"spawned": spawned, "count": len(spawned)}
 
 
@@ -407,11 +206,9 @@ async def api_run_scenario(name: str, request: Request):
         raise HTTPException(404, f"Unknown scenario: {name}")
     if farm.active_scenario:
         raise HTTPException(409, f"Scenario '{farm.active_scenario.name}' already running")
-
     body = await request.json() if request.headers.get("content-type") == "application/json" else {}
     intensity = body.get("intensity", "medium")
     params = body.get("params", {})
-
     scenario_cls = SCENARIOS[name]
     scenario = scenario_cls(farm, intensity, **params)
     farm.active_scenario = scenario
@@ -419,9 +216,8 @@ async def api_run_scenario(name: str, request: Request):
     async def run_and_report():
         try:
             result = await scenario.run()
-            # Generate report
             await farm.report_gen.generate(
-                name, result.as_dict() if hasattr(result, 'as_dict') else {},
+                name, result.as_dict() if hasattr(result, "as_dict") else {},
                 farm_metrics.snapshot(),
             )
         except Exception as e:
@@ -466,7 +262,6 @@ async def api_metrics_stream():
             pass
         finally:
             farm_metrics.unsubscribe(q)
-
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
@@ -499,6 +294,7 @@ async def api_events(limit: int = 100):
 
 @app.get("/api/profiles")
 async def api_profiles():
+    from profiles import list_profiles
     return list_profiles()
 
 
@@ -514,9 +310,7 @@ async def api_update_settings(request: Request):
     body = await request.json()
     farm.settings.update(body)
     save_settings(farm.settings)
-    # Update report generator
     farm.report_gen.cpo_api_url = farm.settings.get("cpo_api_url", "")
-    farm.report_gen.redis_host = farm.settings.get("redis_host", "")
     return farm.settings
 
 
@@ -547,13 +341,7 @@ async def api_update_environment(request: Request):
 def main():
     port = int(os.environ.get("PORT", "8086"))
     host = os.environ.get("HOST", "0.0.0.0")
-    uvicorn.run(
-        "control:app",
-        host=host,
-        port=port,
-        log_level="info",
-        access_log=False,
-    )
+    uvicorn.run("control:app", host=host, port=port, log_level="info", access_log=False)
 
 
 if __name__ == "__main__":

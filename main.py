@@ -58,7 +58,6 @@ DEFAULT_SETTINGS = {
     "ocpp16_url": os.environ.get("OCPP16_URL", "ws://127.0.0.1:9100/ocpp"),
     "ocpp201_url": os.environ.get("OCPP201_URL", "ws://127.0.0.1:9201/ocpp"),
     "cpo_api_url": os.environ.get("CPO_API_URL", ""),
-    "redis_host": os.environ.get("REDIS_HOST", ""),
     "default_profile": "ENC-DCL120B-16",
     "default_quirks_enabled": True,
 }
@@ -92,7 +91,6 @@ class FarmState:
         self.scenario_task: Optional[asyncio.Task] = None
         self.report_gen = ReportGenerator(
             cpo_api_url=self.settings.get("cpo_api_url", ""),
-            redis_host=self.settings.get("redis_host", ""),
         )
         self.running: bool = False
         self.paused: bool = False
