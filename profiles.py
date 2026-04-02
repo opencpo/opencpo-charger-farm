@@ -1,5 +1,5 @@
 """
-Hongjiali / MAXPOWER product profiles for virtual charger simulation.
+Hongjiali / HG Power product profiles for virtual charger simulation.
 Each profile defines hardware specs, OCPP capabilities, and firmware quirks.
 """
 
@@ -21,7 +21,7 @@ class ConnectorType(str, Enum):
 
 @dataclass
 class QuirkConfig:
-    """MAXPOWER firmware quirks — toggleable per charger instance.
+    """HG Power firmware quirks — toggleable per charger instance.
     Learned from real Maxpower CCS2+CCS2 deployment (March 2026)."""
     websocket_ping_interval_zero: bool = True       # WS ping=0, server must ping us
     reject_connection_timeout_change: bool = True    # Reject ChangeConfiguration for ConnectionTimeOut
@@ -89,7 +89,7 @@ class ChargerProfile:
 PROFILES: dict[str, ChargerProfile] = {
     "ENC-DCL120B": ChargerProfile(
         name="ENC-DCL120B",
-        vendor="MAXPOWER",
+        vendor="HG Power",
         model="ENC-DCL120B",
         firmware="DC2_D_V3.10.89",
         max_kw=120.0,
@@ -100,7 +100,7 @@ PROFILES: dict[str, ChargerProfile] = {
     ),
     "ENC-DCL120B-16": ChargerProfile(
         name="ENC-DCL120B-16",
-        vendor="MAXPOWER",
+        vendor="HG Power",
         model="ENC-DCL120B",
         firmware="DC2_D_V3.10.89",
         max_kw=120.0,
@@ -111,7 +111,7 @@ PROFILES: dict[str, ChargerProfile] = {
     ),
     "ENC-DCL060B": ChargerProfile(
         name="ENC-DCL060B",
-        vendor="MAXPOWER",
+        vendor="HG Power",
         model="ENC-DCL060B",
         firmware="DC2_D_V3.10.89",
         max_kw=60.0,
@@ -122,7 +122,7 @@ PROFILES: dict[str, ChargerProfile] = {
     ),
     "ENC-DCX030A": ChargerProfile(
         name="ENC-DCX030A",
-        vendor="MAXPOWER",
+        vendor="HG Power",
         model="ENC-DCX030A",
         firmware="DC2_D_V3.10.89",
         max_kw=30.0,
