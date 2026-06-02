@@ -247,7 +247,7 @@ async def _metrics_loop():
 async def index(request: Request):
     profiles = list_profiles()
     scenarios = list_scenarios()
-    return templates.TemplateResponse("farm.html", {
+    return templates.TemplateResponse(request, "farm.html", {
         "request": request,
         "profiles": profiles,
         "scenarios": scenarios,
