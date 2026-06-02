@@ -444,7 +444,9 @@ async def api_reconnect_storm():
 
 
 def main():
-    uvicorn.run("main:app", host="127.0.0.1", port=8087, log_level="info", access_log=False)
+    port = int(os.environ.get("FARM_UI_PORT", "8087"))
+    host = os.environ.get("HOST", "0.0.0.0")
+    uvicorn.run("main:app", host=host, port=port, log_level="info", access_log=False)
 
 
 if __name__ == "__main__":
