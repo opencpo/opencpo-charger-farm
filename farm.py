@@ -32,8 +32,8 @@ DEFAULT_SETTINGS = {
     "default_quirks_enabled": True,
     "connection_mode": "direct",
     "tailscale_auth_key": "",
-    "demo_locations": os.environ.get("DEMO_LOCATIONS", "true").lower() != "false",
-    "demo_city": os.environ.get("DEMO_CITY", "Amsterdam"),
+    "demo_locations": os.environ.get("DEMO_LOCATIONS", "false").lower() != "false",
+    "demo_city": os.environ.get("DEMO_CITY", ""),
 }
 
 
@@ -113,7 +113,7 @@ class ChargerFarm:
         self.chargers[cp_id] = charger
         self.tasks[cp_id] = asyncio.create_task(self._run_charger(cp_id, charger))
 
-        if self.settings.get("demo_locations", True):
+        if self.settings.get("demo_locations", False):
             asyncio.create_task(push_location(
                 cp_id=cp_id,
                 location_index=self._spawn_count,

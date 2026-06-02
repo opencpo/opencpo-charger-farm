@@ -28,7 +28,7 @@ class CertStatus(str, Enum):
 class PnCConfig:
     """Per-charger Plug & Charge configuration."""
     enabled: bool = False
-    emaid_prefix: str = "XX-CPO"       # Country-Provider prefix
+    emaid_prefix: str = ""             # Country-Provider prefix
     contract_id_counter: int = 1
     tls_handshake_delay_sec: float = 2.0   # Realistic delay for TLS + ISO 15118 negotiation
     cert_status: CertStatus = CertStatus.VALID
