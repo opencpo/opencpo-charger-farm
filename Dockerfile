@@ -21,4 +21,4 @@ ENV OCPP201_URL=ws://localhost:9201/ocpp
 
 EXPOSE 8087
 
-ENTRYPOINT ["python", "-u", "farm.py"]
+ENTRYPOINT ["python", "-u", "main.py"]
