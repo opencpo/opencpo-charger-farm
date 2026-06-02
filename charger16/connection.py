@@ -125,7 +125,7 @@ async def boot(charger: "VirtualCharger16") -> None:
     """Run OCPP boot sequence."""
     t0 = time.monotonic()
     resp = await charger._call(
-        call.BootNotificationPayload(
+        call.BootNotification(
             charge_point_vendor=charger.profile.vendor,
             charge_point_model=charger.profile.model,
             charge_point_serial_number=f"{charger.cp_id}-SN",
@@ -174,7 +174,7 @@ async def heartbeat_loop(charger: "VirtualCharger16") -> None:
             if not charger._connected:
                 break
             t0 = time.monotonic()
-            resp = await charger._call(call.HeartbeatPayload())
+            resp = await charger._call(call.Heartbeat())
             if resp:
                 farm_metrics.record_latency((time.monotonic() - t0) * 1000)
     except asyncio.CancelledError:
@@ -198,7 +198,7 @@ async def replay_offline_buffer(charger: "VirtualCharger16") -> None:
                 {"value": str(snap_dict["soc"]), "measurand": Measurand.soc, "unit": UnitOfMeasure.percent},
             ]
             await charger._call(
-                call.MeterValuesPayload(
+                call.MeterValues(
                     connector_id=msg["connector_id"],
                     transaction_id=msg["transaction_id"],
                     meter_value=[{"timestamp": msg["timestamp"], "sampled_value": sampled}],
@@ -206,7 +206,7 @@ async def replay_offline_buffer(charger: "VirtualCharger16") -> None:
             )
         elif msg["type"] == "StopTransaction":
             await charger._call(
-                call.StopTransactionPayload(
+                call.StopTransaction(
                     meter_stop=msg["meter_stop"],
                     timestamp=msg["timestamp"],
                     transaction_id=msg["transaction_id"],
@@ -224,7 +224,7 @@ async def replay_reconnect_stops(charger: "VirtualCharger16") -> None:
         if conn.transaction_id is not None:
             meter = int(conn.charge_state.meter_wh) if conn.charge_state else 0
             await charger._call(
-                call.StopTransactionPayload(
+                call.StopTransaction(
                     meter_stop=meter,
                     timestamp=_now_iso(),
                     transaction_id=conn.transaction_id,
@@ -259,4 +259,4 @@ async def simulate_firmware_update(charger: "VirtualCharger16", location: str, r
 async def _send_firmware_status(charger: "VirtualCharger16", status: str) -> None:
     from ocpp.v16 import call
     charger._firmware_status = status
-    await charger._call(call.FirmwareStatusNotificationPayload(status=status))
+    await charger._call(call.FirmwareStatusNotification(status=status))

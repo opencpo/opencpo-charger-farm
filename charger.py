@@ -154,7 +154,7 @@ class VirtualCharger(CP):
         """Run the full boot sequence."""
         # BootNotification
         resp = await self.call(
-            call.BootNotificationPayload(
+            call.BootNotification(
                 charge_point_vendor=VENDOR,
                 charge_point_model=MODEL,
                 charge_point_serial_number=SERIAL,
@@ -185,7 +185,7 @@ class VirtualCharger(CP):
         """Send StatusNotification and track state."""
         self.connector_status[connector_id] = status
         await self.call(
-            call.StatusNotificationPayload(
+            call.StatusNotification(
                 connector_id=connector_id,
                 error_code=ChargePointErrorCode.no_error,
                 status=status,
@@ -199,7 +199,7 @@ class VirtualCharger(CP):
         while True:
             await asyncio.sleep(interval)
             try:
-                resp = await self.call(call.HeartbeatPayload())
+                resp = await self.call(call.Heartbeat())
                 log.debug("Heartbeat → %s", resp.current_time)
             except Exception as e:
                 log.warning("Heartbeat failed: %s", e)
@@ -228,7 +228,7 @@ class VirtualCharger(CP):
 
         # StartTransaction
         resp = await self.call(
-            call.StartTransactionPayload(
+            call.StartTransaction(
                 connector_id=connector_id,
                 id_tag=id_tag,
                 meter_start=meter_start,
@@ -317,7 +317,7 @@ class VirtualCharger(CP):
         ]
 
         await self.call(
-            call.MeterValuesPayload(
+            call.MeterValues(
                 connector_id=connector_id,
                 transaction_id=transaction_id,
                 meter_value=[{"timestamp": ts, "sampled_value": sampled_values}],
@@ -350,7 +350,7 @@ class VirtualCharger(CP):
         self.cumulative_meter[session.connector_id] = session.meter_wh
 
         await self.call(
-            call.StopTransactionPayload(
+            call.StopTransaction(
                 meter_stop=final_meter,
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 transaction_id=session.transaction_id,
@@ -371,32 +371,32 @@ class VirtualCharger(CP):
 
     # ─── OCPP message handlers ───────────────────────────────────────────
 
-    @on(Action.RemoteStartTransaction)
+    @on(Action.remote_start_transaction)
     async def on_remote_start(self, id_tag: str, connector_id: int = 1, **kwargs):
         log.info("RemoteStartTransaction connector=%d id_tag=%s", connector_id, id_tag)
         if connector_id in self.sessions:
-            return call_result.RemoteStartTransactionPayload(
+            return call_result.RemoteStartTransaction(
                 status=RemoteStartStopStatus.rejected
             )
         asyncio.create_task(self._start_charging(connector_id, id_tag))
-        return call_result.RemoteStartTransactionPayload(
+        return call_result.RemoteStartTransaction(
             status=RemoteStartStopStatus.accepted
         )
 
-    @on(Action.RemoteStopTransaction)
+    @on(Action.remote_stop_transaction)
     async def on_remote_stop(self, transaction_id: int, **kwargs):
         log.info("RemoteStopTransaction txn=%d", transaction_id)
         for conn_id, session in self.sessions.items():
             if session.transaction_id == transaction_id:
                 asyncio.create_task(self._stop_charging(conn_id, "Remote"))
-                return call_result.RemoteStopTransactionPayload(
+                return call_result.RemoteStopTransaction(
                     status=RemoteStartStopStatus.accepted
                 )
-        return call_result.RemoteStopTransactionPayload(
+        return call_result.RemoteStopTransaction(
             status=RemoteStartStopStatus.rejected
         )
 
-    @on(Action.GetConfiguration)
+    @on(Action.get_configuration)
     async def on_get_configuration(self, key: list = None, **kwargs):
         log.info("GetConfiguration key=%s", key)
         entries = []
@@ -407,36 +407,36 @@ class VirtualCharger(CP):
                 entries.append({"key": k, "readonly": True, "value": self._config[k]})
             else:
                 unknown.append(k)
-        return call_result.GetConfigurationPayload(
+        return call_result.GetConfiguration(
             configuration_key=entries, unknown_key=unknown
         )
 
-    @on(Action.ChangeConfiguration)
+    @on(Action.change_configuration)
     async def on_change_configuration(self, key: str, value: str, **kwargs):
         log.info("ChangeConfiguration %s=%s", key, value)
         if key in self._config:
             self._config[key] = value
-            return call_result.ChangeConfigurationPayload(status="Accepted")
-        return call_result.ChangeConfigurationPayload(status="NotSupported")
+            return call_result.ChangeConfiguration(status="Accepted")
+        return call_result.ChangeConfiguration(status="NotSupported")
 
-    @on(Action.Reset)
+    @on(Action.reset)
     async def on_reset(self, type: str, **kwargs):
         log.info("Reset type=%s", type)
         # Stop all sessions
         for conn_id in list(self.sessions.keys()):
             await self._stop_charging(conn_id, "Reboot")
-        return call_result.ResetPayload(status=ResetStatus.accepted)
+        return call_result.Reset(status=ResetStatus.accepted)
 
-    @on(Action.TriggerMessage)
+    @on(Action.trigger_message)
     async def on_trigger_message(self, requested_message: str, connector_id: int = 0, **kwargs):
         log.info("TriggerMessage %s connector=%d", requested_message, connector_id)
         if requested_message == "StatusNotification":
             status = self.connector_status.get(connector_id, ChargePointStatus.available)
             asyncio.create_task(self.send_status(connector_id, status))
-            return call_result.TriggerMessagePayload(status=TriggerMessageStatus.accepted)
+            return call_result.TriggerMessage(status=TriggerMessageStatus.accepted)
         elif requested_message == "Heartbeat":
-            asyncio.create_task(self.call(call.HeartbeatPayload()))
-            return call_result.TriggerMessagePayload(status=TriggerMessageStatus.accepted)
+            asyncio.create_task(self.call(call.Heartbeat()))
+            return call_result.TriggerMessage(status=TriggerMessageStatus.accepted)
         elif requested_message == "MeterValues":
             session = self.sessions.get(connector_id)
             if session:
@@ -444,11 +444,11 @@ class VirtualCharger(CP):
                 asyncio.create_task(
                     self._send_meter_values(connector_id, session.transaction_id, snap)
                 )
-                return call_result.TriggerMessagePayload(status=TriggerMessageStatus.accepted)
+                return call_result.TriggerMessage(status=TriggerMessageStatus.accepted)
         elif requested_message == "BootNotification":
             asyncio.create_task(
                 self.call(
-                    call.BootNotificationPayload(
+                    call.BootNotification(
                         charge_point_vendor=VENDOR,
                         charge_point_model=MODEL,
                         charge_point_serial_number=SERIAL,
@@ -456,8 +456,8 @@ class VirtualCharger(CP):
                     )
                 )
             )
-            return call_result.TriggerMessagePayload(status=TriggerMessageStatus.accepted)
-        return call_result.TriggerMessagePayload(status=TriggerMessageStatus.not_implemented)
+            return call_result.TriggerMessage(status=TriggerMessageStatus.accepted)
+        return call_result.TriggerMessage(status=TriggerMessageStatus.not_implemented)
 
     async def cleanup(self):
         """Clean shutdown."""

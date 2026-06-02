@@ -25,7 +25,7 @@ async def send_status(charger: "VirtualCharger201", evse_id: int, connector_id: 
     if evse_id in charger.evses:
         charger.evses[evse_id].status = status
     await charger._call(
-        call201.StatusNotificationPayload(
+        call201.StatusNotification(
             timestamp=_now_iso(),
             connector_status=status,
             evse_id=evse_id,

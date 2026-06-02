@@ -33,7 +33,7 @@ async def send_status(charger: "VirtualCharger16", connector_id: int, status: st
     if connector_id > 0 and connector_id in charger.connectors:
         charger.connectors[connector_id].status = status
     await charger._call(
-        call.StatusNotificationPayload(
+        call.StatusNotification(
             connector_id=connector_id,
             error_code=ChargePointErrorCode.no_error,
             status=status,
@@ -47,7 +47,7 @@ async def send_status_with_error(charger: "VirtualCharger16", connector_id: int,
     if connector_id > 0 and connector_id in charger.connectors:
         charger.connectors[connector_id].status = status
     await charger._call(
-        call.StatusNotificationPayload(
+        call.StatusNotification(
             connector_id=connector_id,
             error_code=error_code,
             status=status,
@@ -84,7 +84,7 @@ async def send_meter_values(charger: "VirtualCharger16", connector_id: int,
         ])
 
     await charger._call(
-        call.MeterValuesPayload(
+        call.MeterValues(
             connector_id=connector_id,
             transaction_id=transaction_id,
             meter_value=[{"timestamp": ts, "sampled_value": sampled}],

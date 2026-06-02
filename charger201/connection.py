@@ -111,7 +111,7 @@ async def connect_and_run(charger: "VirtualCharger201") -> None:
 async def boot(charger: "VirtualCharger201") -> None:
     t0 = time.monotonic()
     resp = await charger._call(
-        call201.BootNotificationPayload(
+        call201.BootNotification(
             charging_station={
                 "model": charger.profile.model,
                 "vendor_name": charger.profile.vendor,
@@ -137,7 +137,7 @@ async def boot(charger: "VirtualCharger201") -> None:
     charger._heartbeat_task = asyncio.create_task(heartbeat_loop(charger))
 
     await charger._call(
-        call201.SecurityEventNotificationPayload(
+        call201.SecurityEventNotification(
             type="StartupOfTheDevice",
             timestamp=_now_iso(),
         )
@@ -165,7 +165,7 @@ async def heartbeat_loop(charger: "VirtualCharger201") -> None:
             await asyncio.sleep(interval)
             if not charger._connected:
                 break
-            await charger._call(call201.HeartbeatPayload())
+            await charger._call(call201.Heartbeat())
     except asyncio.CancelledError:
         pass
 
@@ -185,13 +185,13 @@ async def simulate_firmware_update(charger: "VirtualCharger201", location: str) 
         for status in [FirmwareStatusType.downloading, FirmwareStatusType.downloaded,
                        FirmwareStatusType.installing]:
             charger._firmware_status = status
-            await charger._call(call201.FirmwareStatusNotificationPayload(status=status))
+            await charger._call(call201.FirmwareStatusNotification(status=status))
             await asyncio.sleep(random.uniform(3, 10))
         if random.random() < 0.9:
             charger._firmware_status = FirmwareStatusType.installed
-            await charger._call(call201.FirmwareStatusNotificationPayload(status=FirmwareStatusType.installed))
+            await charger._call(call201.FirmwareStatusNotification(status=FirmwareStatusType.installed))
         else:
             charger._firmware_status = FirmwareStatusType.installation_failed
-            await charger._call(call201.FirmwareStatusNotificationPayload(status=FirmwareStatusType.installation_failed))
+            await charger._call(call201.FirmwareStatusNotification(status=FirmwareStatusType.installation_failed))
     except asyncio.CancelledError:
         pass

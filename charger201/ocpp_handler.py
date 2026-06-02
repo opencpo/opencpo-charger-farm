@@ -46,28 +46,28 @@ class _ChargePointHandler201(CP201):
         super().__init__(cp_id, ws)
         self.charger = charger
 
-    @on(Action.RequestStartTransaction)
+    @on(Action.request_start_transaction)
     async def on_request_start(self, id_token: dict, evse_id: int = 1, **kwargs):
         from .session import do_start_charging
         farm_metrics.record_message_received()
         evse = self.charger.evses.get(evse_id)
         if not evse or evse.transaction_id is not None or not evse.available:
-            return call_result201.RequestStartTransactionPayload(status=RequestStartStopStatusType.rejected)
+            return call_result201.RequestStartTransaction(status=RequestStartStopStatusType.rejected)
         token_value = id_token.get("id_token", "REMOTE")
         asyncio.create_task(do_start_charging(self.charger, evse_id, token_value))
-        return call_result201.RequestStartTransactionPayload(status=RequestStartStopStatusType.accepted)
+        return call_result201.RequestStartTransaction(status=RequestStartStopStatusType.accepted)
 
-    @on(Action.RequestStopTransaction)
+    @on(Action.request_stop_transaction)
     async def on_request_stop(self, transaction_id: str, **kwargs):
         from .session import do_stop_charging
         farm_metrics.record_message_received()
         for evse in self.charger.evses.values():
             if evse.transaction_id == transaction_id:
                 asyncio.create_task(do_stop_charging(self.charger, evse.evse_id, "Remote"))
-                return call_result201.RequestStopTransactionPayload(status=RequestStartStopStatusType.accepted)
-        return call_result201.RequestStopTransactionPayload(status=RequestStartStopStatusType.rejected)
+                return call_result201.RequestStopTransaction(status=RequestStartStopStatusType.accepted)
+        return call_result201.RequestStopTransaction(status=RequestStartStopStatusType.rejected)
 
-    @on(Action.GetVariables)
+    @on(Action.get_variables)
     async def on_get_variables(self, get_variable_data: list, **kwargs):
         farm_metrics.record_message_received()
         results = []
@@ -88,9 +88,9 @@ class _ChargePointHandler201(CP201):
                     "component": req["component"],
                     "variable": req["variable"],
                 })
-        return call_result201.GetVariablesPayload(get_variable_result=results)
+        return call_result201.GetVariables(get_variable_result=results)
 
-    @on(Action.SetVariables)
+    @on(Action.set_variables)
     async def on_set_variables(self, set_variable_data: list, **kwargs):
         farm_metrics.record_message_received()
         results = []
@@ -109,28 +109,28 @@ class _ChargePointHandler201(CP201):
             else:
                 results.append({"attribute_status": SetVariableStatusType.unknown_variable,
                                 "component": req["component"], "variable": req["variable"]})
-        return call_result201.SetVariablesPayload(set_variable_result=results)
+        return call_result201.SetVariables(set_variable_result=results)
 
-    @on(Action.SetChargingProfile)
+    @on(Action.set_charging_profile)
     async def on_set_charging_profile(self, evse_id: int, charging_profile: dict, **kwargs):
         farm_metrics.record_message_received()
         sl = charging_profile.get("stack_level", 0)
         charging_profile["evse_id"] = evse_id
         self.charger._charging_profiles[sl] = charging_profile
-        return call_result201.SetChargingProfilePayload(status="Accepted")
+        return call_result201.SetChargingProfile(status="Accepted")
 
-    @on(Action.ClearChargingProfile)
+    @on(Action.clear_charging_profile)
     async def on_clear_charging_profile(self, **kwargs):
         farm_metrics.record_message_received()
         self.charger._charging_profiles.clear()
-        return call_result201.ClearChargingProfilePayload(status=ClearChargingProfileStatusType.accepted)
+        return call_result201.ClearChargingProfile(status=ClearChargingProfileStatusType.accepted)
 
-    @on(Action.GetCompositeSchedule)
+    @on(Action.get_composite_schedule)
     async def on_get_composite_schedule(self, duration: int, evse_id: int, **kwargs):
         farm_metrics.record_message_received()
-        return call_result201.GetCompositeSchedulePayload(status="Accepted")
+        return call_result201.GetCompositeSchedule(status="Accepted")
 
-    @on(Action.Reset)
+    @on(Action.reset)
     async def on_reset(self, type: str, **kwargs):
         from .session import do_stop_charging
         farm_metrics.record_message_received()
@@ -139,37 +139,37 @@ class _ChargePointHandler201(CP201):
                 await do_stop_charging(self.charger, evse.evse_id, "Reboot")
         if type == ResetType.immediate:
             asyncio.create_task(self.charger.force_disconnect())
-        return call_result201.ResetPayload(status=ResetStatusType.accepted)
+        return call_result201.Reset(status=ResetStatusType.accepted)
 
-    @on(Action.TriggerMessage)
+    @on(Action.trigger_message)
     async def on_trigger_message(self, requested_message: str, **kwargs):
         farm_metrics.record_message_received()
         if requested_message == TriggerMessageType.heartbeat:
-            asyncio.create_task(self.charger._call(call201.HeartbeatPayload()))
-            return call_result201.TriggerMessagePayload(status=TriggerMessageStatusType.accepted)
+            asyncio.create_task(self.charger._call(call201.Heartbeat()))
+            return call_result201.TriggerMessage(status=TriggerMessageStatusType.accepted)
         elif requested_message == TriggerMessageType.boot_notification:
             asyncio.create_task(self.charger._call(
-                call201.BootNotificationPayload(
+                call201.BootNotification(
                     charging_station={"model": self.charger.profile.model, "vendor_name": self.charger.profile.vendor},
                     reason=BootReasonType.triggered,
                 )
             ))
-            return call_result201.TriggerMessagePayload(status=TriggerMessageStatusType.accepted)
+            return call_result201.TriggerMessage(status=TriggerMessageStatusType.accepted)
         elif requested_message == TriggerMessageType.status_notification:
             evse_id = kwargs.get("evse", {}).get("id", 1) if "evse" in kwargs else 1
             evse = self.charger.evses.get(evse_id)
             if evse:
                 asyncio.create_task(self.charger._send_status(evse_id, evse.connector_id, evse.status))
-                return call_result201.TriggerMessagePayload(status=TriggerMessageStatusType.accepted)
+                return call_result201.TriggerMessage(status=TriggerMessageStatusType.accepted)
         elif requested_message == TriggerMessageType.firmware_status_notification:
             if self.charger._firmware_status:
                 asyncio.create_task(self.charger._call(
-                    call201.FirmwareStatusNotificationPayload(status=self.charger._firmware_status)
+                    call201.FirmwareStatusNotification(status=self.charger._firmware_status)
                 ))
-                return call_result201.TriggerMessagePayload(status=TriggerMessageStatusType.accepted)
-        return call_result201.TriggerMessagePayload(status=TriggerMessageStatusType.not_implemented)
+                return call_result201.TriggerMessage(status=TriggerMessageStatusType.accepted)
+        return call_result201.TriggerMessage(status=TriggerMessageStatusType.not_implemented)
 
-    @on(Action.ChangeAvailability)
+    @on(Action.change_availability)
     async def on_change_availability(self, operational_status: str, **kwargs):
         farm_metrics.record_message_received()
         evse_data = kwargs.get("evse")
@@ -181,34 +181,34 @@ class _ChargePointHandler201(CP201):
                 if evse.transaction_id is None:
                     status = ConnectorStatusEnumType.available if evse.available else ConnectorStatusEnumType.unavailable
                     asyncio.create_task(self.charger._send_status(evse_id, evse.connector_id, status))
-                return call_result201.ChangeAvailabilityPayload(status="Accepted")
+                return call_result201.ChangeAvailability(status="Accepted")
         else:
             for evse in self.charger.evses.values():
                 evse.available = (operational_status == OperationalStatusType.operative)
-            return call_result201.ChangeAvailabilityPayload(status="Accepted")
-        return call_result201.ChangeAvailabilityPayload(status="Rejected")
+            return call_result201.ChangeAvailability(status="Accepted")
+        return call_result201.ChangeAvailability(status="Rejected")
 
-    @on(Action.ReserveNow)
+    @on(Action.reserve_now)
     async def on_reserve_now(self, id: int, expiry_date_time: str, id_token: dict, **kwargs):
         farm_metrics.record_message_received()
         evse_data = kwargs.get("evse")
         evse_id = evse_data.get("id", 1) if evse_data else 1
         evse = self.charger.evses.get(evse_id)
         if not evse or evse.transaction_id is not None:
-            return call_result201.ReserveNowPayload(status=ReservationUpdateStatusType.rejected)
+            return call_result201.ReserveNow(status=ReservationUpdateStatusType.rejected)
         evse.reservation_id = id
-        return call_result201.ReserveNowPayload(status=ReservationUpdateStatusType.accepted)
+        return call_result201.ReserveNow(status=ReservationUpdateStatusType.accepted)
 
-    @on(Action.CancelReservation)
+    @on(Action.cancel_reservation)
     async def on_cancel_reservation(self, reservation_id: int, **kwargs):
         farm_metrics.record_message_received()
         for evse in self.charger.evses.values():
             if evse.reservation_id == reservation_id:
                 evse.reservation_id = None
-                return call_result201.CancelReservationPayload(status="Accepted")
-        return call_result201.CancelReservationPayload(status="Rejected")
+                return call_result201.CancelReservation(status="Accepted")
+        return call_result201.CancelReservation(status="Rejected")
 
-    @on(Action.UpdateFirmware)
+    @on(Action.update_firmware)
     async def on_update_firmware(self, request_id: int, firmware: dict, **kwargs):
         from .connection import simulate_firmware_update
         farm_metrics.record_message_received()
@@ -218,30 +218,30 @@ class _ChargePointHandler201(CP201):
         self.charger._firmware_task = asyncio.create_task(
             simulate_firmware_update(self.charger, location)
         )
-        return call_result201.UpdateFirmwarePayload(status=UpdateFirmwareStatusType.accepted)
+        return call_result201.UpdateFirmware(status=UpdateFirmwareStatusType.accepted)
 
-    @on(Action.InstallCertificate)
+    @on(Action.install_certificate)
     async def on_install_certificate(self, certificate_type: str, certificate: str, **kwargs):
         farm_metrics.record_message_received()
         farm_metrics.log_event("info", self.charger.cp_id, f"InstallCertificate type={certificate_type}")
-        return call_result201.InstallCertificatePayload(status="Accepted")
+        return call_result201.InstallCertificate(status="Accepted")
 
-    @on(Action.CertificateSigned)
+    @on(Action.certificate_signed)
     async def on_certificate_signed(self, certificate_chain: str, **kwargs):
         farm_metrics.record_message_received()
         farm_metrics.log_event("info", self.charger.cp_id, "CertificateSigned received")
-        return call_result201.CertificateSignedPayload(status="Accepted")
+        return call_result201.CertificateSigned(status="Accepted")
 
-    @on(Action.DataTransfer)
+    @on(Action.data_transfer)
     async def on_data_transfer(self, vendor_id: str, **kwargs):
         farm_metrics.record_message_received()
-        return call_result201.DataTransferPayload(status=DataTransferStatusType.accepted)
+        return call_result201.DataTransfer(status=DataTransferStatusType.accepted)
 
-    @on(Action.GetBaseReport)
+    @on(Action.get_base_report)
     async def on_get_base_report(self, request_id: int, report_base: str, **kwargs):
         farm_metrics.record_message_received()
         asyncio.create_task(self._send_device_report(request_id))
-        return call_result201.GetBaseReportPayload(status="Accepted")
+        return call_result201.GetBaseReport(status="Accepted")
 
     async def _send_device_report(self, request_id: int):
         report_data = []
@@ -254,7 +254,7 @@ class _ChargePointHandler201(CP201):
             })
         try:
             await self.charger._call(
-                call201.NotifyReportPayload(
+                call201.NotifyReport(
                     request_id=request_id,
                     generated_at=_now_iso(),
                     seq_no=0,

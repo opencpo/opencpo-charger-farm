@@ -40,7 +40,7 @@ async def start_charging(charger: "VirtualCharger16", connector_id: int = 1, id_
 async def do_authorize_then_start(charger: "VirtualCharger16", connector_id: int, id_tag: str) -> None:
     """Maxpower behavior: send Authorize AFTER accepting RemoteStart, BEFORE StartTransaction."""
     try:
-        result = await charger._call(call.AuthorizePayload(id_tag=id_tag))
+        result = await charger._call(call.Authorize(id_tag=id_tag))
         status = result.id_tag_info.get("status", "Accepted") if hasattr(result, "id_tag_info") else "Accepted"
         if status != "Accepted":
             log.warning(f"[{charger.cp_id}] Authorize rejected for {id_tag}: {status}")
@@ -68,7 +68,7 @@ async def do_start_charging(charger: "VirtualCharger16", connector_id: int, id_t
     meter_start = int(charger._cumulative_wh.get(connector_id, 0))
 
     resp = await charger._call(
-        call.StartTransactionPayload(
+        call.StartTransaction(
             connector_id=connector_id,
             id_tag=id_tag,
             meter_start=meter_start,
@@ -133,7 +133,7 @@ async def do_stop_charging(charger: "VirtualCharger16", connector_id: int, reaso
 
     if charger._connected:
         await charger._call(
-            call.StopTransactionPayload(
+            call.StopTransaction(
                 meter_stop=meter_stop,
                 timestamp=_now_iso(),
                 transaction_id=conn.transaction_id,
@@ -196,7 +196,7 @@ async def trigger_pnc(charger: "VirtualCharger16", connector_id: int = 1) -> boo
     await asyncio.sleep(charger.pnc_config.tls_handshake_delay_sec)
 
     await charger._call(
-        call.DataTransferPayload(
+        call.DataTransfer(
             vendor_id="org.openchargealliance.iso15118pnc",
             message_id="Authorize",
             data=json.dumps({"eMAID": emaid, "exiRequest": exi}),

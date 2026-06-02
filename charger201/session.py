@@ -50,7 +50,7 @@ async def send_transaction_event(charger: "VirtualCharger201", event_type: str,
         payload_dict["evse"] = {"id": evse.evse_id, "connector_id": evse.connector_id}
     if meter_values:
         payload_dict["meter_value"] = meter_values
-    return await charger._call(call201.TransactionEventPayload(**payload_dict))
+    return await charger._call(call201.TransactionEvent(**payload_dict))
 
 
 async def start_charging(charger: "VirtualCharger201", evse_id: int = 1,
@@ -171,7 +171,7 @@ async def trigger_pnc(charger: "VirtualCharger201", evse_id: int = 1) -> bool:
     exi = generate_exi_cert_request(emaid)
     await asyncio.sleep(charger.pnc_config.tls_handshake_delay_sec)
     await charger._call(
-        call201.Get15118EVCertificatePayload(
+        call201.Get15118EVCertificate(
             iso15118_schema_version="urn:iso:15118:2:2013:MsgDef" if not charger.pnc_config.iso15118_20 else "urn:iso:std:iso:15118:-20:DC",
             action="Install",
             exi_request=exi,
