@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Optional
 from ocpp.v201 import call as call201
 from ocpp.v201.enums import (
     ChargingStateType,
-    ConnectorStatusType,
+    ConnectorStatusEnumType,
     IdTokenType,
     TransactionEventType,
 )
@@ -65,7 +65,7 @@ async def start_charging(charger: "VirtualCharger201", evse_id: int = 1,
 async def do_start_charging(charger: "VirtualCharger201", evse_id: int, id_token_value: str) -> None:
     evse = charger.evses[evse_id]
 
-    await charger._send_status(evse_id, evse.connector_id, ConnectorStatusType.occupied)
+    await charger._send_status(evse_id, evse.connector_id, ConnectorStatusEnumType.occupied)
 
     txn_id = charger._next_txn_id()
     evse.transaction_id = txn_id
@@ -136,7 +136,7 @@ async def do_stop_charging(charger: "VirtualCharger201", evse_id: int, reason: s
     evse.id_token = None
     evse.charge_state = None
 
-    await charger._send_status(evse_id, evse.connector_id, ConnectorStatusType.available)
+    await charger._send_status(evse_id, evse.connector_id, ConnectorStatusEnumType.available)
 
 
 async def start_v2g(charger: "VirtualCharger201", evse_id: int = 1,

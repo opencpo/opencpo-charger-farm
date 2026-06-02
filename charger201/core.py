@@ -8,7 +8,7 @@ import random
 import time
 from typing import Optional
 
-from ocpp.v201.enums import ConnectorStatusType
+from ocpp.v201.enums import ConnectorStatusEnumType
 
 from profiles import ChargerProfile, QuirkConfig
 from network import NetworkLayer, ConnectionState
@@ -25,7 +25,7 @@ class EVSEState:
     def __init__(self, evse_id: int, connector_id: int = 1):
         self.evse_id = evse_id
         self.connector_id = connector_id
-        self.status: str = ConnectorStatusType.available
+        self.status: str = ConnectorStatusEnumType.available
         self.transaction_id: Optional[str] = None
         self.id_token: Optional[dict] = None
         self.charge_state = None

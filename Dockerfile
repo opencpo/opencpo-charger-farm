@@ -12,24 +12,13 @@ WORKDIR /app
 
 COPY --from=builder /install /usr/local
 
-COPY control.py .
-COPY charger16.py .
-COPY charger201.py .
-COPY profiles.py .
-COPY physics.py .
-COPY metrics.py .
-COPY network.py .
-COPY environment.py .
-COPY pnc.py .
-COPY scenarios.py .
-COPY reports.py .
-COPY static/ static/
+COPY . .
 
 ENV HOST=0.0.0.0
-ENV PORT=8086
+ENV FARM_UI_PORT=8087
 ENV OCPP16_URL=ws://localhost:9100/ocpp
 ENV OCPP201_URL=ws://localhost:9201/ocpp
 
-EXPOSE 8086
+EXPOSE 8087
 
-ENTRYPOINT ["python", "-u", "control.py"]
+ENTRYPOINT ["python", "-u", "farm.py"]

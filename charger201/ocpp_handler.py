@@ -14,7 +14,7 @@ from ocpp.v201.enums import (
     Action,
     BootReasonType,
     ClearChargingProfileStatusType,
-    ConnectorStatusType,
+    ConnectorStatusEnumType,
     DataTransferStatusType,
     GetVariableStatusType,
     OperationalStatusType,
@@ -179,7 +179,7 @@ class _ChargePointHandler201(CP201):
             if evse:
                 evse.available = (operational_status == OperationalStatusType.operative)
                 if evse.transaction_id is None:
-                    status = ConnectorStatusType.available if evse.available else ConnectorStatusType.unavailable
+                    status = ConnectorStatusEnumType.available if evse.available else ConnectorStatusEnumType.unavailable
                     asyncio.create_task(self.charger._send_status(evse_id, evse.connector_id, status))
                 return call_result201.ChangeAvailabilityPayload(status="Accepted")
         else:
